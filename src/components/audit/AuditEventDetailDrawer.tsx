@@ -10,6 +10,8 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
   event,
   onClose,
 }) => {
+  if (!event) return null;
+
   return (
     <div className="flex flex-col gap-space-md bg-surface-container-low border border-outline-variant/40 rounded-xl p-space-md relative shadow-xl">
       {/* Drawer Header */}

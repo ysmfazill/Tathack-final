@@ -5,10 +5,12 @@ import { IncidentMetricCards } from '../components/live-analysis/IncidentMetricC
 import { HeroWhyBlocked } from '../components/live-analysis/HeroWhyBlocked';
 import { ProposedVsEnforced } from '../components/live-analysis/ProposedVsEnforced';
 import { ForensicMetadataFooter } from '../components/live-analysis/ForensicMetadataFooter';
-import { getAuditLogs, getAuditSummary } from '../lib/api';
+import { getAuditLogs, getAuditSummary, analyzeSecurityEvent } from '../lib/api';
 
 export const AnalysisPage: React.FC = () => {
   const [requestId, setRequestId] = useState<string>('');
+  const [advisoryText, setAdvisoryText] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [timeRange, setTimeRange] = useState<'15m' | '1h' | '24h' | 'custom'>('15m');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   
@@ -55,6 +57,23 @@ export const AnalysisPage: React.FC = () => {
   const selectedEvent = requestId 
     ? logs.find(l => l.event_id.includes(requestId) || l.request_id?.includes(requestId)) || logs[0]
     : logs[0];
+
+  const handleAnalyze = async () => {
+    if (!selectedEvent) return;
+    setIsAnalyzing(true);
+    try {
+      const action = selectedEvent.action || selectedEvent.tool_name || 'Unknown Action';
+      const target = selectedEvent.destination_agent || 'Unknown Target';
+      const prompt_context = selectedEvent.safe_metadata || '{}';
+      const res = await analyzeSecurityEvent(action, target, prompt_context);
+      setAdvisoryText(res.data.advisory);
+    } catch (e) {
+      console.error(e);
+      setAdvisoryText('Analysis failed: Backend or provider unavailable.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const renderContent = () => {
     if (loading) {
@@ -103,6 +122,26 @@ export const AnalysisPage: React.FC = () => {
           executionStatus={selectedEvent.execution_status || 'N/A'}
           runtimeResult={selectedEvent.outcome || 'N/A'}
         />
+
+        {/* AI Advisory Panel */}
+        <div className="bg-surface-container-low p-space-md rounded-xl border border-outline-variant/30 flex flex-col gap-space-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-headline-sm text-on-surface">AI Security Advisory</h3>
+            <button
+              onClick={handleAnalyze}
+              disabled={isAnalyzing}
+              className="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isAnalyzing ? 'Analyzing...' : 'Generate Advisory'}
+            </button>
+          </div>
+          {advisoryText && (
+            <div className="bg-surface-container p-4 rounded-lg border border-outline-variant/20 text-on-surface-variant text-sm">
+              <span className="material-symbols-outlined text-primary text-[18px] inline-block align-middle mr-2">psychology</span>
+              <span className="align-middle leading-relaxed">{advisoryText}</span>
+            </div>
+          )}
+        </div>
 
         {/* 9. Forensic Metadata & Compliance Audit Record (Footer Grid) */}
         <ForensicMetadataFooter

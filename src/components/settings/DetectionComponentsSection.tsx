@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card } from '../common/Card';
-import { Button } from '../common/Button';
 
 interface DetectionComponentItem {
   id: string;
@@ -84,16 +83,15 @@ const DETECTION_COMPONENTS: DetectionComponentItem[] = [
 ];
 
 export const DetectionComponentsSection: React.FC = () => {
-  const [selectedComp, setSelectedComp] = useState<DetectionComponentItem | null>(null);
 
   return (
-    <Card elevation="low" className="p-space-lg shadow-md border border-outline-variant/30 flex flex-col justify-between">
+    <Card elevation="low" className="p-space-lg shadow-md border border-outline-variant/30 flex flex-col justify-between opacity-75">
       <div>
         <div className="flex items-center justify-between pb-space-md mb-space-md bg-surface-container-lowest/40 p-space-md rounded-xl border border-outline-variant/20">
           <div>
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-tertiary text-[22px]">security</span>
-              <h2 className="font-headline-lg text-headline-lg text-on-surface font-bold">
+              <h2 className="font-headline-lg text-headline-lg text-on-surface font-bold text-outline">
                 Detection Components
               </h2>
             </div>
@@ -101,18 +99,23 @@ export const DetectionComponentsSection: React.FC = () => {
               Modular behavioral inspection layers running in local pipeline.
             </p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-tertiary-container/20 text-tertiary font-mono-code text-[11px] border border-tertiary/30 font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>
-            <span>6 / 6 OPERATIONAL</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="font-label-caps text-label-caps text-outline px-2.5 py-1 rounded border border-outline-variant/30 font-semibold bg-surface-container">
+              UNSUPPORTED BY BACKEND
+            </span>
           </div>
         </div>
 
+        <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant mb-space-md">
+          <strong>Notice:</strong> The backend FastAPI execution gateway currently utilizes explicit deterministic rules. Modular detection components (heuristics, regex scanning, twin-execution) are not connected to the live request path.
+        </div>
+
         {/* Component Table/Rows */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 pointer-events-none grayscale opacity-60">
           {DETECTION_COMPONENTS.map((comp) => (
             <div
               key={comp.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between p-space-md rounded-xl bg-surface-container gap-space-sm hover:bg-surface-container-high transition-colors border border-outline-variant/20"
+              className="flex flex-col sm:flex-row sm:items-center justify-between p-space-md rounded-xl bg-surface-container gap-space-sm transition-colors border border-outline-variant/20"
             >
               <div className="flex items-center gap-space-md min-w-0">
                 <div className="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shrink-0 border border-outline-variant/20">
@@ -123,8 +126,8 @@ export const DetectionComponentsSection: React.FC = () => {
                     <span className="font-body-md text-xs sm:text-sm text-on-surface font-semibold truncate">
                       {comp.name}
                     </span>
-                    <span className="px-1.5 py-0.2 rounded text-[10px] font-mono-code bg-tertiary-container/30 text-tertiary font-bold">
-                      {comp.status}
+                    <span className="px-1.5 py-0.2 rounded text-[10px] font-mono-code bg-surface-container-high text-outline font-bold">
+                      Not Configured
                     </span>
                   </div>
                   <p className="font-body-sm text-[11px] text-on-surface-variant truncate">
@@ -135,91 +138,13 @@ export const DetectionComponentsSection: React.FC = () => {
 
               <div className="flex items-center justify-between sm:justify-end gap-space-md shrink-0">
                 <div className="flex items-center gap-3 font-mono-code text-[11px] text-outline">
-                  <span className="text-tertiary font-bold">{comp.health}</span>
-                  <span>{comp.latency}</span>
-                  <span className="hidden md:inline">{comp.lastRun}</span>
+                  <span>-</span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedComp(comp)}
-                >
-                  Inspect
-                </Button>
               </div>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Mandatory Notice */}
-      <div className="mt-space-md p-space-sm rounded-lg bg-surface-container-lowest/80 flex items-center gap-2 text-outline font-mono-code text-[11px] border border-outline-variant/20">
-        <span className="material-symbols-outlined text-secondary text-[16px]">info</span>
-        <span>Mandatory policy checks fail-closed even if optional detectors are bypassed.</span>
-      </div>
-
-      {/* Modal Inspector */}
-      {selectedComp && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => setSelectedComp(null)}
-        >
-          <div
-            className="w-full max-w-md bg-surface-container rounded-2xl border border-outline-variant/40 shadow-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-outline-variant/30 pb-3 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined text-[20px]">{selectedComp.icon}</span>
-                </div>
-                <div>
-                  <h3 className="font-headline-sm text-sm font-bold text-on-surface">
-                    {selectedComp.name}
-                  </h3>
-                  <span className="font-mono-code text-[10px] text-tertiary">
-                    STATUS: {selectedComp.status} • {selectedComp.health}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedComp(null)}
-                className="w-7 h-7 rounded hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant"
-              >
-                <span className="material-symbols-outlined text-[18px]">close</span>
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-lg bg-surface-container-low border border-outline-variant/20">
-                <span className="font-mono-code text-[10px] uppercase text-on-surface-variant block mb-1">
-                  Component Logic & Purpose
-                </span>
-                <p className="text-on-surface leading-relaxed text-[11px]">
-                  {selectedComp.inspectionDetails}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-center font-mono-code">
-                <div className="p-2 rounded bg-surface-container-lowest border border-outline-variant/20">
-                  <span className="text-[10px] text-on-surface-variant block">Avg Latency</span>
-                  <span className="text-xs font-bold text-primary">{selectedComp.latency}</span>
-                </div>
-                <div className="p-2 rounded bg-surface-container-lowest border border-outline-variant/20">
-                  <span className="text-[10px] text-on-surface-variant block">Last Execution</span>
-                  <span className="text-xs font-bold text-on-surface">{selectedComp.lastRun}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-outline-variant/30 flex justify-end">
-              <Button variant="secondary" size="sm" onClick={() => setSelectedComp(null)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </Card>
   );
 };

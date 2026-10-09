@@ -1,53 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../common/Card';
-
-interface SecurityParam {
-  label: string;
-  sublabel: string;
-  value: string;
-  badgeStyle: 'tertiary' | 'error' | 'secondary' | 'neutral';
-}
-
-const SECURITY_PARAMS: SecurityParam[] = [
-  {
-    label: 'Tool Execution Gateway',
-    sublabel: 'Deterministic interception layer',
-    value: 'ENFORCED',
-    badgeStyle: 'tertiary'
-  },
-  {
-    label: 'Unknown Tool Handling',
-    sublabel: 'Unregistered schema behavior',
-    value: 'DENY BY DEFAULT',
-    badgeStyle: 'error'
-  },
-  {
-    label: 'Protected Action Failure Mode',
-    sublabel: 'Auth daemon unreachable',
-    value: 'FAIL-CLOSED',
-    badgeStyle: 'error'
-  },
-  {
-    label: 'Approval Verification',
-    sublabel: 'Payload SHA-256 HMAC binding',
-    value: 'CRYPTOGRAPHIC',
-    badgeStyle: 'secondary'
-  },
-  {
-    label: 'Max Request Input Size',
-    sublabel: 'Prevents memory heap flood',
-    value: '64 KB',
-    badgeStyle: 'neutral'
-  },
-  {
-    label: 'Execution Watchdog Timeout',
-    sublabel: 'Per tool invocation dispatch',
-    value: '15.0s',
-    badgeStyle: 'neutral'
-  }
-];
+import { Button } from '../common/Button';
+import { getSettings, updateSettings } from '../../lib/api';
 
 export const RuntimeSecurityControls: React.FC = () => {
+  const [config, setConfig] = useState({
+    enforce_mandatory_deny: true,
+    require_approval_for_destructive: true,
+    log_level: 'INFO'
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    getSettings('security').then(res => setConfig(res.data)).catch(console.error);
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateSettings('security', config);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Card elevation="low" className="p-space-lg shadow-md border border-outline-variant/30 flex flex-col justify-between">
       <div>
@@ -64,43 +42,39 @@ export const RuntimeSecurityControls: React.FC = () => {
         </div>
 
         <div className="flex flex-col gap-2.5">
-          {SECURITY_PARAMS.map((param) => (
-            <div
-              key={param.label}
-              className="flex items-center justify-between p-space-sm rounded-xl bg-surface-container border border-outline-variant/20"
-            >
-              <div className="flex flex-col">
-                <span className="font-body-md text-xs sm:text-sm text-on-surface font-semibold">
-                  {param.label}
-                </span>
-                <span className="font-body-sm text-[11px] text-outline">
-                  {param.sublabel}
-                </span>
-              </div>
-              <span
-                className={`font-mono-code text-[11px] px-2.5 py-0.5 rounded font-bold ${
-                  param.badgeStyle === 'tertiary'
-                    ? 'text-tertiary bg-tertiary-container/20 border border-tertiary/30'
-                    : param.badgeStyle === 'error'
-                    ? 'text-error bg-error-container/20 border border-error/30'
-                    : param.badgeStyle === 'secondary'
-                    ? 'text-secondary bg-secondary-container/20 border border-secondary/30'
-                    : 'text-on-surface bg-surface-container-high border border-outline-variant/30'
-                }`}
-              >
-                {param.value}
-              </span>
+          <div className="flex items-center justify-between p-space-sm rounded-xl bg-surface-container border border-outline-variant/20">
+            <div className="flex flex-col">
+              <span className="font-body-md text-xs sm:text-sm text-on-surface font-semibold">Enforce Mandatory Deny</span>
+              <span className="font-body-sm text-[11px] text-outline">Deterministic policy precedence over heuristic scores</span>
             </div>
-          ))}
+            <input 
+              type="checkbox" 
+              checked={config.enforce_mandatory_deny}
+              onChange={e => setConfig({...config, enforce_mandatory_deny: e.target.checked})}
+              className="accent-primary w-4 h-4"
+            />
+          </div>
+          
+          <div className="flex items-center justify-between p-space-sm rounded-xl bg-surface-container border border-outline-variant/20">
+            <div className="flex flex-col">
+              <span className="font-body-md text-xs sm:text-sm text-on-surface font-semibold">Require Approval for Destructive Actions</span>
+              <span className="font-body-sm text-[11px] text-outline">Intercepts and requests token for sensitive tools</span>
+            </div>
+            <input 
+              type="checkbox" 
+              checked={config.require_approval_for_destructive}
+              onChange={e => setConfig({...config, require_approval_for_destructive: e.target.checked})}
+              className="accent-primary w-4 h-4"
+            />
+          </div>
         </div>
       </div>
-
-      {/* Lock Notice */}
-      <div className="mt-space-md p-space-sm rounded-lg bg-surface-container-lowest/90 flex items-start gap-2 text-outline font-mono-code text-[11px] border border-outline-variant/20">
-        <span className="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5">lock</span>
-        <span>
-          Security parameters are enforced deterministically at the backend runtime layer and cannot be bypassed via UI.
-        </span>
+      
+      {/* Action buttons */}
+      <div className="flex items-center justify-end gap-2 pt-space-xs mt-space-md">
+        <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>
+          {isSaving ? 'Saving...' : 'Apply Configuration'}
+        </Button>
       </div>
     </Card>
   );

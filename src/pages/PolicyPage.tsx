@@ -13,6 +13,7 @@ export const PolicyPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('transfers');
   const [searchFilter, setSearchFilter] = useState('');
   const [rules, setRules] = useState<TransferRuleItem[]>([]);
+  const [toolsRbac, setToolsRbac] = useState<any[]>([]);
   const [policyVersion, setPolicyVersion] = useState("v1.4.2 Strict");
 
   React.useEffect(() => {
@@ -21,6 +22,35 @@ export const PolicyPage: React.FC = () => {
         const res = await fetch('http://127.0.0.1:8080/api/policies');
         const data = await res.json();
         setPolicyVersion(data.policy_version || "v1.4.2 Strict");
+        
+        const mappedTools = data.registered_tools.map((t: string) => {
+          const isDisabled = data.disabled_tools.includes(t);
+          const needsApproval = data.approval_required_tools.includes(t);
+          
+          let status = 'ACTIVE';
+          let statusVariant = 'tertiary';
+          let approval = 'None';
+          
+          if (isDisabled) {
+            status = 'DISABLED';
+            statusVariant = 'error';
+            approval = 'Prohibited';
+          } else if (needsApproval) {
+            status = 'CONDITIONAL';
+            statusVariant = 'secondary';
+            approval = 'Approval Required';
+          }
+          
+          return {
+            name: t,
+            allowedAgents: 'Any',
+            riskTier: isDisabled ? 'Critical' : (needsApproval ? 'High' : 'Medium'),
+            approval: approval,
+            status: status,
+            statusVariant: statusVariant,
+          };
+        });
+        setToolsRbac(mappedTools);
         
         const mappedRules: TransferRuleItem[] = data.registered_tools.map((t: string, idx: number) => {
           const isDisabled = data.disabled_tools.includes(t);
@@ -58,17 +88,6 @@ export const PolicyPage: React.FC = () => {
       r.destinationAgent.toLowerCase().includes(searchFilter.toLowerCase())
   );
 
-  const handleAddRule = () => {
-    alert('Opening Create Policy Rule builder modal...');
-  };
-
-  const handleEditRule = (id: string) => {
-    alert(`Editing policy rule definition for ${id}...`);
-  };
-
-  const handleAuditRule = (id: string) => {
-    alert(`Inspecting audit trace and provenance logs for ${id}...`);
-  };
 
   return (
     <PageContainer>
@@ -78,7 +97,7 @@ export const PolicyPage: React.FC = () => {
           version={policyVersion}
           updatedTime="Updated recently by Backend"
           onViewHistory={() => alert('Viewing Policy Center version history ledger...')}
-          onCreateRule={handleAddRule}
+          onCreateRule={() => alert('Creation via UI is unsupported (Backend config only)')}
         />
 
         {/* 2. Top Overview Metrics (4 Compact Tiles) */}
@@ -95,16 +114,13 @@ export const PolicyPage: React.FC = () => {
         {/* 4. Section A: Agent-to-Agent Transfer Rules Table */}
         <TransferRulesTable
           rules={filteredRules}
-          onAddRule={handleAddRule}
-          onEditRule={handleEditRule}
-          onAuditRule={handleAuditRule}
         />
 
         {/* 5. Section B: Sensitive Data Classification (4 Tiers) */}
         <DataClassificationTiers />
 
         {/* 6. Section C: Two-Column Split (Destination Security & Tool Access RBAC) */}
-        <DestinationAndToolRbac />
+        <DestinationAndToolRbac tools={toolsRbac} destinations={[]} />
 
         {/* 7. Section D: Interactive Policy Simulation Sandbox */}
         <PolicySimulationSandbox />

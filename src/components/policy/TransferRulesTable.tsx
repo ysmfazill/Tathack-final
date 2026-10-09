@@ -15,16 +15,10 @@ export interface TransferRuleItem {
 
 interface TransferRulesTableProps {
   rules: TransferRuleItem[];
-  onAddRule: () => void;
-  onEditRule: (id: string) => void;
-  onAuditRule: (id: string) => void;
 }
 
 export const TransferRulesTable: React.FC<TransferRulesTableProps> = ({
   rules,
-  onAddRule,
-  onEditRule,
-  onAuditRule,
 }) => {
   return (
     <div className="flex flex-col bg-surface-container-low rounded-xl shadow-md overflow-hidden border border-outline-variant/30">
@@ -41,12 +35,13 @@ export const TransferRulesTable: React.FC<TransferRulesTableProps> = ({
           </p>
         </div>
         <button
-          onClick={onAddRule}
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-primary text-body-sm font-medium transition-colors border border-outline-variant/30 shadow-sm"
+          disabled
+          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container hover:bg-surface-bright text-outline text-body-sm font-medium transition-colors border border-outline-variant/30 shadow-sm cursor-not-allowed opacity-50"
           type="button"
+          title="Backend API not yet implemented"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
-          <span>Add Transfer Rule</span>
+          <span>Add Transfer Rule (Unavailable)</span>
         </button>
       </div>
 
@@ -153,16 +148,18 @@ export const TransferRulesTable: React.FC<TransferRulesTableProps> = ({
                   </td>
                   <td className="px-space-lg py-3.5 text-right whitespace-nowrap">
                     <button
-                      onClick={() => onEditRule(rule.id)}
-                      className="text-primary hover:text-on-surface font-mono-code text-body-sm px-2 py-1 transition-colors"
+                      disabled
+                      className="text-outline hover:text-outline font-mono-code text-body-sm px-2 py-1 transition-colors cursor-not-allowed opacity-50"
                       type="button"
+                      title="Editing is not supported via API"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => onAuditRule(rule.id)}
-                      className="text-outline hover:text-on-surface font-mono-code text-body-sm px-2 py-1 transition-colors"
+                      disabled
+                      className="text-outline hover:text-outline font-mono-code text-body-sm px-2 py-1 transition-colors cursor-not-allowed opacity-50"
                       type="button"
+                      title="Audit traces not available here"
                     >
                       Audit
                     </button>

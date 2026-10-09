@@ -37,8 +37,9 @@ def record_audit_event(event: AuditEvent, db_url: str = None):
                 event.outcome, event.safe_metadata
             ))
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        with open('error_log.txt', 'a') as f:
+            f.write(f"Error saving audit event: {e}\n")
 
 def get_audit_logs(page: int = 1, page_size: int = 20, event_type: str = None, tool_name: str = None, db_url: str = None) -> Tuple[List[AuditEvent], int]:
     from app.core.config import settings

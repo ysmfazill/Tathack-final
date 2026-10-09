@@ -97,4 +97,11 @@ def init_db(db_url: str = settings.database_url):
                 FOREIGN KEY(run_id) REFERENCES evaluation_runs(run_id)
             )
         ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS application_settings (
+                category TEXT PRIMARY KEY,
+                config_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        ''')
         conn.commit()

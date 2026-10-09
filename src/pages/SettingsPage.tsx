@@ -1,38 +1,19 @@
 import React, { useState } from 'react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { SettingsHeader } from '../components/settings/SettingsHeader';
-import { ModelProviderSection, ModelProviderConfig } from '../components/settings/ModelProviderSection';
+import { ModelProviderSection } from '../components/settings/ModelProviderSection';
 import { DetectionComponentsSection } from '../components/settings/DetectionComponentsSection';
 import { RuntimeSecurityControls } from '../components/settings/RuntimeSecurityControls';
-import { RiskThresholdsSection, RiskThresholdValues } from '../components/settings/RiskThresholdsSection';
+import { RiskThresholdsSection } from '../components/settings/RiskThresholdsSection';
 import { AuditStorageSection } from '../components/settings/AuditStorageSection';
 import { SimulationSandboxSection } from '../components/settings/SimulationSandboxSection';
 import { ConfigurationHistorySection } from '../components/settings/ConfigurationHistorySection';
 import { SettingsComplianceFooter } from '../components/settings/SettingsComplianceFooter';
 
-const INITIAL_PROVIDER_CONFIG: ModelProviderConfig = {
-  provider: 'ollama',
-  baseUrl: 'http://localhost:11434',
-  modelName: 'llama-3-8b-instruct:q4_k_m',
-  timeout: '60s',
-  contextWindow: '8,192 tokens',
-};
-
-const INITIAL_THRESHOLDS: RiskThresholdValues = {
-  low: 0.30,
-  medium: 0.70,
-  high: 0.85,
-  critical: 1.00,
-};
-
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
-  const [providerConfig, setProviderConfig] = useState<ModelProviderConfig>(INITIAL_PROVIDER_CONFIG);
-  const [thresholds, setThresholds] = useState<RiskThresholdValues>(INITIAL_THRESHOLDS);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isTesting, setIsTesting] = useState<boolean>(false);
-  const [testLatency, setTestLatency] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('18 mins ago by SecOps Admin');
 
@@ -41,46 +22,19 @@ export const SettingsPage: React.FC = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleProviderChange = (updated: Partial<ModelProviderConfig>) => {
-    setProviderConfig((prev) => ({ ...prev, ...updated }));
-    setHasUnsavedChanges(true);
-  };
-
-  const handleThresholdsChange = (updated: RiskThresholdValues) => {
-    setThresholds(updated);
-    setHasUnsavedChanges(true);
-  };
-
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
       setIsSaving(false);
       setHasUnsavedChanges(false);
-      setLastUpdated('Just now by SecOps Admin');
-      showToast('Settings successfully persisted to local configuration store (v1.4.2).');
+      setLastUpdated('Just now by Local User');
+      showToast('Settings saved to local browser preferences. No backend endpoints exist.');
     }, 700);
   };
 
   const handleDiscard = () => {
-    setProviderConfig(INITIAL_PROVIDER_CONFIG);
-    setThresholds(INITIAL_THRESHOLDS);
     setHasUnsavedChanges(false);
-    showToast('Discarded all unsaved configuration changes.');
-  };
-
-  const handleTestConnection = () => {
-    setIsTesting(true);
-    setTimeout(() => {
-      const latencies = ['12.4ms', '14.2ms', '11.8ms', '13.9ms'];
-      const randomLat = latencies[Math.floor(Math.random() * latencies.length)];
-      setIsTesting(false);
-      setTestLatency(randomLat);
-      showToast(`Connection verified to ${providerConfig.baseUrl} (Latency: ${randomLat}).`);
-    }, 600);
-  };
-
-  const handleResetDemoState = () => {
-    showToast('Demo simulation state reset to factory baseline seed. Policy rules preserved.');
+    showToast('Discarded local changes.');
   };
 
   const scrollToSection = (sectionId: string, tabName: string) => {
@@ -218,14 +172,7 @@ export const SettingsPage: React.FC = () => {
 
       {/* Row 1: AI Model Provider & Local Connectivity */}
       <div id="model-provider-section" className="scroll-mt-24">
-        <ModelProviderSection
-          config={providerConfig}
-          onChange={handleProviderChange}
-          onSaveProvider={handleSave}
-          onTestConnection={handleTestConnection}
-          isTesting={isTesting}
-          testLatency={testLatency}
-        />
+        <ModelProviderSection />
       </div>
 
       {/* Row 2: System Health & Detection Components (60% / 40%) */}
@@ -241,11 +188,7 @@ export const SettingsPage: React.FC = () => {
       {/* Row 3: Risk Thresholds & Audit Persistence (50% / 50%) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-lg mb-space-xl">
         <div id="risk-thresholds-section" className="scroll-mt-24">
-          <RiskThresholdsSection
-            thresholds={thresholds}
-            onChangeThresholds={handleThresholdsChange}
-            onApply={handleSave}
-          />
+          <RiskThresholdsSection />
         </div>
         <div id="audit-storage-section" className="scroll-mt-24">
           <AuditStorageSection />
@@ -255,7 +198,7 @@ export const SettingsPage: React.FC = () => {
       {/* Row 4: Simulation Sandbox & Configuration History (60% / 40%) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg mb-space-xl">
         <div id="simulation-sandbox-section" className="lg:col-span-7 scroll-mt-24">
-          <SimulationSandboxSection onResetDemoState={handleResetDemoState} />
+          <SimulationSandboxSection />
         </div>
         <div id="config-history-section" className="lg:col-span-5 scroll-mt-24">
           <ConfigurationHistorySection />

@@ -1,67 +1,18 @@
 import React from 'react';
 
-export const DestinationAndToolRbac: React.FC = () => {
-  const destinations = [
-    {
-      name: 'Reporting Workspace',
-      type: 'Internal',
-      permittedData: 'Internal Data',
-      approval: 'None',
-      status: 'ALLOWED',
-      statusVariant: 'tertiary',
-    },
-    {
-      name: 'Approved Export (S3)',
-      type: 'Whitelisted Ext',
-      permittedData: 'Sanitized Summary',
-      approval: 'SecOps Token',
-      status: 'RESTRICTED',
-      statusVariant: 'secondary',
-    },
-    {
-      name: 'Unknown External Socket',
-      type: 'Untrusted Ext',
-      permittedData: 'None',
-      approval: 'N/A',
-      status: 'BLOCKED',
-      statusVariant: 'error',
-    },
-  ];
+interface DestinationAndToolRbacProps {
+  destinations?: any[];
+  tools?: {
+    name: string;
+    allowedAgents: string;
+    riskTier: string;
+    approval: string;
+    status: string;
+    statusVariant: string;
+  }[];
+}
 
-  const tools = [
-    {
-      name: 'read_employee_summary',
-      allowedAgents: 'HR, Report',
-      riskTier: 'Medium',
-      approval: 'None',
-      status: 'ACTIVE',
-      statusVariant: 'tertiary',
-    },
-    {
-      name: 'generate_report',
-      allowedAgents: 'Report Agent',
-      riskTier: 'Medium',
-      approval: 'None',
-      status: 'ACTIVE',
-      statusVariant: 'tertiary',
-    },
-    {
-      name: 'export_records',
-      allowedAgents: 'Export Agent',
-      riskTier: 'High',
-      approval: 'POL-704 Multi-Sig',
-      status: 'CONDITIONAL',
-      statusVariant: 'secondary',
-    },
-    {
-      name: 'delete_records',
-      allowedAgents: 'Disabled',
-      riskTier: 'Critical',
-      approval: 'Prohibited',
-      status: 'DISABLED',
-      statusVariant: 'error',
-    },
-  ];
+export const DestinationAndToolRbac: React.FC<DestinationAndToolRbacProps> = ({ destinations = [], tools = [] }) => {
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-space-lg">

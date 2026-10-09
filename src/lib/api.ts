@@ -42,3 +42,14 @@ export const runEvalSuite = (suiteId: string) => apiClient.post('/api/evaluation
 export const getEvalRuns = (params?: any) => apiClient.get('/api/evaluations/runs', { params });
 export const getEvalRun = (runId: string) => apiClient.get(`/api/evaluations/runs/${runId}`);
 export const getEvalSummary = () => apiClient.get('/api/evaluations/summary');
+
+// Providers
+export const getProviderStatus = () => apiClient.get('/api/providers/status');
+
+// Settings
+export const getSettings = (category: string) => apiClient.get(`/api/settings/${category}`);
+export const updateSettings = (category: string, config: any) => apiClient.put(`/api/settings/${category}`, config);
+
+// Analysis
+export const analyzeSecurityEvent = (action: string, target: string, prompt_context: string) => 
+  apiClient.post('/api/analysis/analyze', { action, target, prompt_context });
