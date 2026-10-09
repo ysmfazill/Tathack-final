@@ -13,7 +13,8 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
 
     model_config = {
-        "env_file": ".env"
+        "env_file": ".env",
+        "extra": "ignore"
     }
 
 settings = Settings()

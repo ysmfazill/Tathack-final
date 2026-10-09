@@ -1,6 +1,16 @@
-import React from 'react';
-import { TestScenario } from '../../types';
-import { MOCK_TEST_SCENARIOS } from '../../data/mockData';
+import React, { useState, useEffect } from 'react';
+
+export interface TestScenario {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  severity: string;
+  vector?: string;
+  badgeVariant?: string;
+  defaultTask: string;
+  defaultUntrusted: string;
+}
 
 export type AttackScenario = TestScenario;
 
@@ -13,19 +23,47 @@ export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
   selectedScenarioId,
   onSelectScenario,
 }) => {
+  const [scenarios, setScenarios] = useState<TestScenario[]>([]);
+
+  useEffect(() => {
+    const fetchScenarios = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8080/api/playground/scenarios');
+        const data = await response.json();
+        
+        const mapped = data.map((d: any) => ({
+          id: d.scenario_id,
+          title: d.name,
+          description: d.description,
+          category: d.category,
+          severity: d.severity,
+          vector: 'System API',
+          badgeVariant: d.severity === 'CRITICAL' ? 'error' : d.severity === 'LOW' ? 'tertiary' : 'secondary',
+          defaultTask: `Task simulation for ${d.name}`,
+          defaultUntrusted: `Payload configuration for ${d.category}`
+        }));
+        
+        setScenarios(mapped);
+      } catch (err) {
+        console.error('Failed to load scenarios', err);
+      }
+    };
+    fetchScenarios();
+  }, []);
+
   return (
     <div className="flex flex-col gap-space-xs mb-space-lg">
       <div className="flex items-center justify-between">
         <span className="font-label-caps text-label-caps text-outline uppercase tracking-wider">
-          Adversarial Test Scenarios
+          Adversarial Test Scenarios (Live Backend)
         </span>
         <span className="font-label-caps text-[11px] text-outline/70 hidden sm:inline">
-          Controlled benchmarks • Synthetic payloads
+          Connected to deterministic policy evaluator
         </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-space-md">
-        {MOCK_TEST_SCENARIOS.map((scenario) => {
+        {scenarios.map((scenario) => {
           const isSelected = scenario.id === selectedScenarioId;
           const isDefense = scenario.badgeVariant === 'secondary';
           const isControl = scenario.badgeVariant === 'tertiary';
@@ -64,12 +102,6 @@ export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
                       ? 'document_scanner'
                       : isControl
                       ? 'verified_user'
-                      : scenario.id === 'cross-agent'
-                      ? 'hub'
-                      : scenario.id === 'direct'
-                      ? 'gpp_maybe'
-                      : scenario.id === 'indirect'
-                      ? 'warning'
                       : 'shield_lock'}
                   </span>
                 </div>

@@ -12,57 +12,43 @@ import { RuleInspectorAndAudit } from '../components/policy/RuleInspectorAndAudi
 export const PolicyPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('transfers');
   const [searchFilter, setSearchFilter] = useState('');
+  const [rules, setRules] = useState<TransferRuleItem[]>([]);
+  const [policyVersion, setPolicyVersion] = useState("v1.4.2 Strict");
 
-  const rules: TransferRuleItem[] = [
-    {
-      id: 'RULE-001',
-      name: 'Internal HR Summarization',
-      sourceAgent: 'HR Agent (trusted)',
-      sourceType: 'trusted',
-      destinationAgent: 'Report Agent',
-      destinationType: 'internal',
-      classification: 'Internal Employee Summary',
-      classificationVariant: 'secondary',
-      targetEndpoint: 'Internal Workspace',
-      decision: 'ALLOW',
-    },
-    {
-      id: 'RULE-002',
-      name: 'Confidential Record Egress',
-      sourceAgent: 'Report Agent',
-      sourceType: 'processing',
-      destinationAgent: 'Export Agent',
-      destinationType: 'external',
-      classification: 'Confidential Employee Records',
-      classificationVariant: 'error',
-      targetEndpoint: 'External Destination',
-      decision: 'BLOCK',
-    },
-    {
-      id: 'RULE-003',
-      name: 'Approved Sanity Export',
-      sourceAgent: 'Report Agent',
-      sourceType: 'processing',
-      destinationAgent: 'Export Agent',
-      destinationType: 'external',
-      classification: 'Sanitized Summary',
-      classificationVariant: 'tertiary',
-      targetEndpoint: 'Approved Export S3',
-      decision: 'REQUIRE APPROVAL',
-    },
-    {
-      id: 'RULE-004',
-      name: 'Restricted Record Boundary',
-      sourceAgent: 'HR Agent',
-      sourceType: 'trusted',
-      destinationAgent: 'Unknown Agent',
-      destinationType: 'unknown',
-      classification: 'Restricted Employee Records',
-      classificationVariant: 'error',
-      targetEndpoint: 'Unknown / Any',
-      decision: 'BLOCK',
-    },
-  ];
+  React.useEffect(() => {
+    const fetchPolicies = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:8080/api/policies');
+        const data = await res.json();
+        setPolicyVersion(data.policy_version || "v1.4.2 Strict");
+        
+        const mappedRules: TransferRuleItem[] = data.registered_tools.map((t: string, idx: number) => {
+          const isDisabled = data.disabled_tools.includes(t);
+          const needsApproval = data.approval_required_tools.includes(t);
+          let decision = "ALLOW";
+          if (isDisabled) decision = "BLOCK";
+          else if (needsApproval) decision = "REQUIRE APPROVAL";
+          
+          return {
+            id: `RULE-TOOL-${idx}`,
+            name: `Tool Execution: ${t}`,
+            sourceAgent: 'Any Requesting Agent',
+            sourceType: 'processing',
+            destinationAgent: t,
+            destinationType: 'external',
+            classification: 'Tool Policy',
+            classificationVariant: isDisabled ? 'error' : 'secondary',
+            targetEndpoint: t,
+            decision: decision,
+          };
+        });
+        setRules(mappedRules);
+      } catch(e) {
+        console.error("Failed to fetch policies", e);
+      }
+    };
+    fetchPolicies();
+  }, []);
 
   const filteredRules = rules.filter(
     (r) =>
@@ -89,8 +75,8 @@ export const PolicyPage: React.FC = () => {
       <div className="flex flex-col w-full gap-space-xl pb-16">
         {/* 1. Page Header */}
         <PolicyHeader
-          version="v1.4.2 Strict"
-          updatedTime="Updated 14 mins ago by SecOps Lead"
+          version={policyVersion}
+          updatedTime="Updated recently by Backend"
           onViewHistory={() => alert('Viewing Policy Center version history ledger...')}
           onCreateRule={handleAddRule}
         />

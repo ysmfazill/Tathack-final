@@ -1,5 +1,4 @@
 import React from 'react';
-import { StatusBadge } from '../common/StatusBadge';
 
 export interface ToolCallSpec {
   toolName: string;
@@ -11,13 +10,13 @@ export interface ToolCallSpec {
 }
 
 interface ResultsInspectorProps {
-  decision: 'BLOCKED' | 'PERMITTED' | 'QUARANTINED';
+  decision: string;
   confidence: number;
   injectionProbability: number;
   exfiltrationRisk: number;
   privilegeDeviation: number;
   summaryText: string;
-  toolCalls: ToolCallSpec[];
+  safeMetadata: string | null;
 }
 
 export const ResultsInspector: React.FC<ResultsInspectorProps> = ({
@@ -27,9 +26,9 @@ export const ResultsInspector: React.FC<ResultsInspectorProps> = ({
   exfiltrationRisk,
   privilegeDeviation,
   summaryText,
-  toolCalls,
+  safeMetadata,
 }) => {
-  const isBlocked = decision === 'BLOCKED' || decision === 'QUARANTINED';
+  const isBlocked = decision === 'BLOCKED' || decision === 'QUARANTINED' || decision === 'DENY';
 
   return (
     <div className="bg-[#131b2e] border border-[#222a3d] rounded-xl p-5 flex flex-col gap-5">
@@ -179,83 +178,21 @@ export const ResultsInspector: React.FC<ResultsInspectorProps> = ({
         </div>
       </div>
 
-      {/* Proposed Tool Authorization Table */}
+      {/* Execution Safe Metadata */}
       <div>
         <div className="flex items-center justify-between mb-2.5">
           <span className="text-xs font-semibold text-[#e0e2ec] font-headline tracking-wide uppercase flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[16px] text-[#adc6ff]">build</span>
-            Proposed Agent Tool Invocations
-          </span>
-          <span className="text-[10px] font-mono text-[#8e9099]">
-            {toolCalls.length} tool calls analyzed
+            <span className="material-symbols-outlined text-[16px] text-[#adc6ff]">data_object</span>
+            Execution Safe Metadata
           </span>
         </div>
 
-        <div className="overflow-x-auto border border-[#222a3d] rounded-lg bg-[#0b1326]">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-[#222a3d] text-[10px] uppercase font-label-caps text-[#8e9099] bg-[#171f33]/40">
-                <th className="py-2.5 px-3.5 font-medium">Tool Function</th>
-                <th className="py-2.5 px-3.5 font-medium">Extracted Parameters</th>
-                <th className="py-2.5 px-3.5 font-medium">Risk Tier</th>
-                <th className="py-2.5 px-3.5 font-medium">RBAC Gate</th>
-                <th className="py-2.5 px-3.5 font-medium">Firewall Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#222a3d]">
-              {toolCalls.map((tc, idx) => (
-                <tr key={idx} className="hover:bg-[#171f33]/30 transition-colors">
-                  <td className="py-3 px-3.5 font-mono text-[#adc6ff] font-medium whitespace-nowrap">
-                    {tc.toolName}
-                  </td>
-                  <td className="py-3 px-3.5 font-mono text-[11px] text-[#c4c6d0]">
-                    <pre className="max-w-xs md:max-w-md overflow-x-auto bg-[#060e20] p-1.5 rounded border border-[#222a3d] text-[10px]">
-                      {JSON.stringify(tc.parameters, null, 2)}
-                    </pre>
-                  </td>
-                  <td className="py-3 px-3.5 whitespace-nowrap">
-                    <StatusBadge
-                      variant={
-                        tc.riskLevel === 'critical'
-                          ? 'error'
-                          : tc.riskLevel === 'high'
-                          ? 'warning'
-                          : 'neutral'
-                      }
-                    >
-                      {tc.riskLevel.toUpperCase()}
-                    </StatusBadge>
-                  </td>
-                  <td className="py-3 px-3.5 whitespace-nowrap font-mono text-[11px]">
-                    {tc.authorized ? (
-                      <span className="text-[#4edea3] flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">check</span>
-                        Authorized
-                      </span>
-                    ) : (
-                      <span className="text-[#ffb4ab] flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">close</span>
-                        Forbidden
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-3.5 whitespace-nowrap">
-                    <span
-                      className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${
-                        tc.verdict === 'BLOCKED'
-                          ? 'bg-[#93000a]/30 text-[#ffb4ab] border-[#ffb4ab]/30'
-                          : tc.verdict === 'SANITIZED'
-                          ? 'bg-[#f59e0b]/20 text-[#f59e0b] border-[#f59e0b]/40'
-                          : 'bg-[#4edea3]/20 text-[#4edea3] border-[#4edea3]/40'
-                      }`}
-                    >
-                      {tc.verdict}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="overflow-x-auto border border-[#222a3d] rounded-lg bg-[#0b1326] p-4 text-xs font-mono-code text-on-surface-variant">
+          {safeMetadata ? (
+            <pre className="whitespace-pre-wrap">{safeMetadata}</pre>
+          ) : (
+            <span>No metadata available.</span>
+          )}
         </div>
       </div>
     </div>

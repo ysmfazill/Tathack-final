@@ -1,53 +1,13 @@
 import React from 'react';
 import { Card } from '../common/Card';
 
-interface HistoricalRun {
-  runId: string;
-  timestamp: string;
-  target: string;
-  policy: string;
-  abr: string;
-  fpr: string;
-  isCurrent?: boolean;
+export interface MethodologyAndRunsSectionProps {
+  runs: any[];
+  onSelectRun: (runId: string) => void;
+  currentRunId?: string;
 }
 
-const HISTORICAL_RUNS: HistoricalRun[] = [
-  {
-    runId: 'RUN-EVAL-0842',
-    timestamp: 'Today, 14:15',
-    target: 'Ollama / Llama-3-70b',
-    policy: 'v1.4.2 STRICT',
-    abr: '95.8%',
-    fpr: '2.1%',
-    isCurrent: true
-  },
-  {
-    runId: 'RUN-EVAL-0841',
-    timestamp: 'Yesterday, 19:40',
-    target: 'GPT-4o Agent Swarm',
-    policy: 'v1.4.1 PERMISSIVE',
-    abr: '91.2%',
-    fpr: '3.4%'
-  },
-  {
-    runId: 'RUN-EVAL-0840',
-    timestamp: 'Oct 7, 11:20',
-    target: 'Claude-3.5 Sonnet Agent',
-    policy: 'v1.3.9 DEFAULT',
-    abr: '88.5%',
-    fpr: '4.8%'
-  },
-  {
-    runId: 'RUN-EVAL-0839',
-    timestamp: 'Oct 5, 16:05',
-    target: 'Mixtral-8x22B Local',
-    policy: 'v1.3.5 BASELINE',
-    abr: '84.0%',
-    fpr: '5.9%'
-  }
-];
-
-export const MethodologyAndRunsSection: React.FC = () => {
+export const MethodologyAndRunsSection: React.FC<MethodologyAndRunsSectionProps> = ({ runs, onSelectRun, currentRunId }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left Column: Benchmark Methodology */}
@@ -81,7 +41,7 @@ export const MethodologyAndRunsSection: React.FC = () => {
                 Attack Block Rate (ABR)
               </div>
               <div className="font-mono-code text-xs text-on-surface bg-surface-container-lowest p-2 rounded border border-outline-variant/20 mb-1.5">
-                ABR = 1.0 - ASR = 95.8%
+                ABR = 1.0 - ASR
               </div>
               <p className="text-[11px] text-on-surface-variant leading-snug">
                 Proportion of hostile and injection vectors intercepted across all security layers.
@@ -113,12 +73,6 @@ export const MethodologyAndRunsSection: React.FC = () => {
             </div>
           </div>
         </div>
-
-        <div className="pt-3 border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-2 text-[11px] text-on-surface-variant font-mono-code">
-          <span>Standards: <strong>MITRE ATLAS v4.2.0</strong></span>
-          <span><strong>OWASP LLM Top 10</strong></span>
-          <span><strong>NIST AI RMF 1.0</strong></span>
-        </div>
       </Card>
 
       {/* Right Column: Historical Evaluation Runs */}
@@ -132,7 +86,7 @@ export const MethodologyAndRunsSection: React.FC = () => {
               </h3>
             </div>
             <span className="text-[10px] font-mono-code text-on-surface-variant">
-              4 runs archived
+              {runs.length} runs archived
             </span>
           </div>
           <p className="font-body-sm text-xs text-on-surface-variant mb-4">
@@ -144,57 +98,47 @@ export const MethodologyAndRunsSection: React.FC = () => {
               <thead>
                 <tr className="bg-surface-container-high/80 text-on-surface-variant border-b border-outline-variant/30 font-semibold">
                   <th className="py-2.5 px-3">Run ID</th>
-                  <th className="py-2.5 px-3">Target & Policy</th>
-                  <th className="py-2.5 px-3 text-center">ABR</th>
-                  <th className="py-2.5 px-3 text-center">FPR</th>
-                  <th className="py-2.5 px-3 text-right">Status</th>
+                  <th className="py-2.5 px-3">Suite & Dataset</th>
+                  <th className="py-2.5 px-3 text-center">Status</th>
+                  <th className="py-2.5 px-3 text-right">Cases</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/20 font-body-sm">
-                {HISTORICAL_RUNS.map((run) => (
-                  <tr
-                    key={run.runId}
-                    className={`hover:bg-surface-container/50 transition-colors ${
-                      run.isCurrent ? 'bg-primary/5 font-medium' : ''
-                    }`}
-                  >
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <div className="font-mono-code font-bold text-primary text-xs">
-                        {run.runId}
-                      </div>
-                      <div className="text-[10px] text-on-surface-variant">{run.timestamp}</div>
-                    </td>
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <div className="text-on-surface font-semibold text-xs">{run.target}</div>
-                      <div className="text-[10px] text-secondary font-mono-code">{run.policy}</div>
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-mono-code font-bold text-tertiary">
-                      {run.abr}
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-mono-code text-on-surface-variant">
-                      {run.fpr}
-                    </td>
-                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                      {run.isCurrent ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono-code font-bold bg-primary/20 text-primary border border-primary/30">
-                          CURRENT
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono-code bg-surface-container-high text-on-surface-variant border border-outline-variant/30">
-                          ARCHIVED
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {runs.map((run) => {
+                  const isCurrent = run.run_id === currentRunId;
+                  return (
+                    <tr
+                      key={run.run_id}
+                      onClick={() => onSelectRun(run.run_id)}
+                      className={`cursor-pointer hover:bg-surface-container/50 transition-colors ${
+                        isCurrent ? 'bg-primary/5 font-medium' : ''
+                      }`}
+                    >
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="font-mono-code font-bold text-primary text-xs">
+                          {run.run_id.substring(0, 8)}
+                        </div>
+                        <div className="text-[10px] text-on-surface-variant">{new Date(run.started_at).toLocaleString()}</div>
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="text-on-surface font-semibold text-xs">{run.suite_id}</div>
+                        <div className="text-[10px] text-secondary font-mono-code">{run.dataset_version}</div>
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-mono-code font-bold text-tertiary">
+                        {run.run_status}
+                      </td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <span className="font-mono-code text-on-surface-variant">{run.executed_case_count}/{run.total_case_count}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+            {runs.length === 0 && (
+              <div className="p-4 text-center text-on-surface-variant text-xs">No historical runs found.</div>
+            )}
           </div>
-        </div>
-
-        <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-between text-[11px] text-on-surface-variant">
-          <span>Continuous Integration / Automated Regression Hooks Active</span>
-          <span className="font-mono-code text-primary font-semibold">GitHub Action #1049</span>
         </div>
       </Card>
     </div>

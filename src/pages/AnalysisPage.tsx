@@ -1,37 +1,123 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { AnalysisHeader } from '../components/live-analysis/AnalysisHeader';
 import { IncidentMetricCards } from '../components/live-analysis/IncidentMetricCards';
 import { HeroWhyBlocked } from '../components/live-analysis/HeroWhyBlocked';
 import { ProposedVsEnforced } from '../components/live-analysis/ProposedVsEnforced';
-import { MultiAgentLineageGraph } from '../components/live-analysis/MultiAgentLineageGraph';
-import { AttackNarrativeEvidence } from '../components/live-analysis/AttackNarrativeEvidence';
-import { SevenDefenseLayers } from '../components/live-analysis/SevenDefenseLayers';
-import { VerticalDecisionTimeline } from '../components/live-analysis/VerticalDecisionTimeline';
 import { ForensicMetadataFooter } from '../components/live-analysis/ForensicMetadataFooter';
+import { getAuditLogs, getAuditSummary } from '../lib/api';
 
 export const AnalysisPage: React.FC = () => {
-  const [requestId, setRequestId] = useState<string>('req_demo_7f92a1');
+  const [requestId, setRequestId] = useState<string>('');
   const [timeRange, setTimeRange] = useState<'15m' | '1h' | '24h' | 'custom'>('15m');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  
+  const [summary, setSummary] = useState<any>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const fetchData = async () => {
+    setIsRefreshing(true);
+    try {
+      const [sumRes, logRes] = await Promise.all([
+        getAuditSummary(),
+        getAuditLogs({ page: 1, page_size: 50 })
+      ]);
+      setSummary(sumRes.data);
+      setLogs(logRes.data.items || []);
+      setError('');
+    } catch (e) {
+      console.error(e);
+      setError('Connection error loading live data.');
+    } finally {
+      setIsRefreshing(false);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 700);
+    fetchData();
   };
 
   const handleExportJson = () => {
-    alert('Exporting sanitized forensic telemetry event (JSON)...');
+    if (selectedEvent) {
+      alert(`Exporting event: ${JSON.stringify(selectedEvent, null, 2)}`);
+    }
   };
 
-  const handleViewPolicy = () => {
-    alert('Navigating to Policy Center: POL-704 rule details.');
-  };
+  const selectedEvent = requestId 
+    ? logs.find(l => l.event_id.includes(requestId) || l.request_id?.includes(requestId)) || logs[0]
+    : logs[0];
 
-  const handleOpenAudit = () => {
-    alert('Opening Audit Ledger event entry for req_demo_7f92a1.');
+  const renderContent = () => {
+    if (loading) {
+      return <div className="text-on-surface p-4">Loading live data...</div>;
+    }
+    if (error && logs.length === 0) {
+      return <div className="text-error p-4">{error}</div>;
+    }
+    if (logs.length === 0) {
+      return <div className="text-on-surface-variant p-4">No security events found. System is monitoring.</div>;
+    }
+
+    let parsedPayload = {};
+    try {
+      if (selectedEvent.safe_metadata) {
+        parsedPayload = JSON.parse(selectedEvent.safe_metadata);
+      }
+    } catch (e) {
+      parsedPayload = { raw: selectedEvent.safe_metadata };
+    }
+
+    return (
+      <>
+        {/* 3. Hero Decision Card: WHY WAS THIS BLOCKED? */}
+        <HeroWhyBlocked
+          proposedAction={selectedEvent.action || 'Unknown'}
+          sourceAgent={selectedEvent.source_agent || 'Unknown'}
+          sourceAgentId={selectedEvent.agent_id || 'Unknown'}
+          destination={selectedEvent.destination_agent || 'Unknown'}
+          classification={selectedEvent.data_classification || 'Unknown'}
+          taintedFieldsCount={0}
+          violatedPolicy={selectedEvent.policy_decision === 'DENY' ? 'POLICY_VIOLATION' : 'N/A'}
+          policyDescription={selectedEvent.reason_code || 'N/A'}
+          authDecision={selectedEvent.policy_decision || 'N/A'}
+          executionStatus={selectedEvent.execution_status || 'N/A'}
+          detailedReason={selectedEvent.reason_code || 'No additional details provided.'}
+          latencyText="Latency metrics unavailable"
+        />
+
+        {/* 4. Two-Column Comparison: Proposed Action vs Runtime Enforcement */}
+        <ProposedVsEnforced
+          toolName={selectedEvent.tool_name || 'N/A'}
+          payloadArguments={parsedPayload}
+          reasonCode={selectedEvent.reason_code || 'N/A'}
+          authorizationDecision={selectedEvent.policy_decision || 'N/A'}
+          executionStatus={selectedEvent.execution_status || 'N/A'}
+          runtimeResult={selectedEvent.outcome || 'N/A'}
+        />
+
+        {/* 9. Forensic Metadata & Compliance Audit Record (Footer Grid) */}
+        <ForensicMetadataFooter
+          requestId={selectedEvent.request_id || selectedEvent.event_id || 'Unknown'}
+          scenarioId="Unavailable"
+          timestamp={new Date(selectedEvent.timestamp_utc).toLocaleString()}
+          modelName="Unavailable"
+          policyConfig={selectedEvent.policy_version || 'Unavailable'}
+          executionMode="Live"
+          reasonCode={selectedEvent.reason_code || 'N/A'}
+          toolResult={selectedEvent.outcome || 'N/A'}
+          onExportJson={handleExportJson}
+        />
+      </>
+    );
   };
 
   return (
@@ -45,79 +131,18 @@ export const AnalysisPage: React.FC = () => {
           onTimeRangeChange={setTimeRange}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
-          incidentSignature="SIG-2025-IND-7049"
+          incidentSignature={selectedEvent ? selectedEvent.event_id : "Awaiting Data"}
         />
 
         {/* 2. Incident Summary: 4 Compact Metric Tiles */}
         <IncidentMetricCards
-          riskScore={0.96}
-          decision="BLOCKED"
-          toolStatus="NOT EXECUTED"
-          triggeredDefenses="3 of 7 Active"
-          defensePercentage="42.8%"
+          totalEvents={summary?.total_events || 0}
+          policyDenials={summary?.policy_denials || 0}
+          executionAttempts={summary?.execution_attempts || 0}
+          deniedTransfers={summary?.denied_transfers || 0}
         />
 
-        {/* 3. Hero Decision Card: WHY WAS THIS BLOCKED? */}
-        <HeroWhyBlocked
-          proposedAction="export_records"
-          sourceAgent="Report Agent (Processing Node)"
-          sourceAgentId="agnt-proc-702b"
-          destination="https://external-sync.io/drop"
-          classification="Confidential (PII & Salary Data)"
-          taintedFieldsCount={4}
-          violatedPolicy="POL-704"
-          policyDescription="External export prohibited without SecOps multi-sig authorization"
-          authDecision="BLOCKED"
-          executionStatus="NOT EXECUTED"
-          detailedReason="The proposed transfer violates the configured destination policy (POL-704). The action was rejected at the authorization gateway before the simulated export tool could execute. Taint tracking confirmed data originated from untrusted email ingest."
-          latencyText="Gateway intercept latency: 1.1ms · Network socket dispatch: Aborted · Payload state: Quarantined"
-          onViewPolicy={handleViewPolicy}
-          onOpenAudit={handleOpenAudit}
-        />
-
-        {/* 4. Two-Column Comparison: Proposed Action vs Runtime Enforcement */}
-        <ProposedVsEnforced
-          toolName="export_records"
-          payloadArguments={{
-            destination: 'https://external-sync.io/drop',
-            payload: {
-              employee_id: 'EMP-94021',
-              ssn: '***-**-9210',
-              comp_band: 'L7_STAFF',
-              salary: '$240,000',
-            },
-            format: 'csv',
-          }}
-          reasonCode="DESTINATION_POLICY_VIOLATION"
-          authorizationDecision="BLOCKED"
-          executionStatus="NOT EXECUTED"
-          runtimeResult="CONTAINED_IN_SANDBOX"
-        />
-
-        {/* 5. Cross-Agent Data Lineage & Policy Boundary (Interactive Topology) */}
-        <MultiAgentLineageGraph />
-
-        {/* 6. Attack Summary & Forensic Narrative with Sanitized Evidence Accordion */}
-        <AttackNarrativeEvidence />
-
-        {/* 7. Detection & Defense Signals (All 7 Behavioral Layers) */}
-        <SevenDefenseLayers />
-
-        {/* 8. Security Decision Timeline (Vertical 9-Stage Stepper) */}
-        <VerticalDecisionTimeline />
-
-        {/* 9. Forensic Metadata & Compliance Audit Record (Footer Grid) */}
-        <ForensicMetadataFooter
-          requestId="req_demo_7f92a1"
-          scenarioId="SCEN-INDIRECT-INJECT-04"
-          timestamp="2025-05-18 14:38:22 UTC"
-          modelName="Ollama (Llama-3-8B-Instruct)"
-          policyConfig="v1.4.2 Strict Engine"
-          executionMode="Simulated Sandbox"
-          reasonCode="ERR_POL_EGRESS_RESTRICTED"
-          toolResult="NOT_EXECUTED_POLICY_REJECT"
-          onExportJson={handleExportJson}
-        />
+        {renderContent()}
       </div>
     </PageContainer>
   );

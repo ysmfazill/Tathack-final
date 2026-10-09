@@ -32,7 +32,7 @@ export const AnalysisHeader: React.FC<AnalysisHeaderProps> = ({
               Simulation Sandbox
             </span>
             <span className="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-mono-code text-[10px] tracking-wide uppercase">
-              Synthetic Incident Trace
+              Live Backend Trace
             </span>
           </div>
           <span className="font-body-md text-body-md text-on-surface-variant">
@@ -55,7 +55,7 @@ export const AnalysisHeader: React.FC<AnalysisHeaderProps> = ({
               onChange={(e) => onRequestIdChange(e.target.value)}
             />
             <span className="absolute right-2 px-1.5 py-0.5 bg-surface-container-high rounded text-[10px] font-label-caps text-outline uppercase tracking-wider">
-              Sample Data
+              Live Data
             </span>
           </div>
 
@@ -114,7 +114,7 @@ export const AnalysisHeader: React.FC<AnalysisHeaderProps> = ({
             Telemetry Verified
           </span>
           <span className="font-label-caps text-[10px] text-outline uppercase tracking-widest bg-surface-container-lowest px-1.5 py-0.5 rounded border border-outline-variant/20">
-            DEMO TRACE
+            LIVE TRACE
           </span>
         </div>
       </div>

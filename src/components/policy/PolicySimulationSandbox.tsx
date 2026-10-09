@@ -7,7 +7,7 @@ export const PolicySimulationSandbox: React.FC = () => {
   const [requestedTool, setRequestedTool] = useState('export_records');
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationResult, setEvaluationResult] = useState<{
-    decision: 'BLOCKED' | 'ALLOWED' | 'REQUIRE APPROVAL';
+    decision: string;
     matchedRule: string;
     reason: string;
     consequence: string;
@@ -18,37 +18,55 @@ export const PolicySimulationSandbox: React.FC = () => {
     consequence: 'Socket Terminated • 0 Bytes Dispatched',
   });
 
-  const handleEvaluate = () => {
+  const handleEvaluate = async () => {
     setIsEvaluating(true);
-    setTimeout(() => {
+    setEvaluationResult({
+      decision: 'BLOCKED',
+      matchedRule: '...',
+      reason: '...',
+      consequence: '...',
+    });
+
+    try {
+      const response = await fetch('http://127.0.0.1:8080/api/policies/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent_id: sourceAgent,
+          tool_name: requestedTool,
+          action: `User requested ${requestedTool} from ${sourceAgent} to ${destinationAgent} with class ${classification}`,
+          arguments: {
+             destination: destinationAgent,
+             classification: classification
+          }
+        })
+      });
+      const data = await response.json();
+      
+      let consequence = 'Socket Terminated';
+      if (data.decision === 'ALLOW') consequence = 'Socket Permitted • Dispatch Authorized';
+      else if (data.decision === 'REQUIRE_APPROVAL') consequence = 'Execution Queued • Awaiting Approval';
+      
+      setEvaluationResult({
+        decision: data.decision,
+        matchedRule: data.matched_rules?.length ? data.matched_rules.join(", ") : data.reason_code,
+        reason: data.explanation,
+        consequence: consequence,
+      });
+    } catch (err) {
+      setEvaluationResult({
+        decision: 'BLOCKED',
+        matchedRule: 'NETWORK_ERROR',
+        reason: 'Failed to connect to policy engine.',
+        consequence: 'Cannot evaluate policy.',
+      });
+    } finally {
       setIsEvaluating(false);
-      if (classification === 'Public / Sanitized' && requestedTool !== 'delete_records') {
-        setEvaluationResult({
-          decision: 'ALLOWED',
-          matchedRule: 'RULE-001 (Internal / Public Transfer Policy)',
-          reason: 'Payload is classified as Public / Sanitized, satisfying destination whitelist without escalation.',
-          consequence: 'Socket Permitted • Dispatch Authorized',
-        });
-      } else if (requestedTool === 'delete_records') {
-        setEvaluationResult({
-          decision: 'BLOCKED',
-          matchedRule: 'RULE-004 (Dangerous Operations Prohibited)',
-          reason: 'Tool delete_records is permanently constrained and disabled for autonomous agent execution.',
-          consequence: 'System Fault Raised • Action Intercepted',
-        });
-      } else {
-        setEvaluationResult({
-          decision: 'BLOCKED',
-          matchedRule: 'RULE-002 (POL-704 Strict Egress)',
-          reason: 'Payload contains Confidential PII targeting untrusted external sink without valid SecOps authorization ticket.',
-          consequence: 'Socket Terminated • 0 Bytes Dispatched',
-        });
-      }
-    }, 400);
+    }
   };
 
-  const isBlocked = evaluationResult.decision === 'BLOCKED';
-  const isAllowed = evaluationResult.decision === 'ALLOWED';
+  const isBlocked = evaluationResult.decision === 'DENY' || evaluationResult.decision === 'BLOCKED';
+  const isAllowed = evaluationResult.decision === 'ALLOW' || evaluationResult.decision === 'ALLOWED';
 
   return (
     <div className="flex flex-col bg-surface-container-low rounded-xl shadow-md p-space-lg gap-space-md border border-outline-variant/30">

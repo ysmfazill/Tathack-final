@@ -1,23 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { PageHeader } from '../components/layout/PageHeader';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { Button } from '../components/common/Button';
-import { EvaluationHeader } from '../components/evaluation/EvaluationHeader';
 import { EvaluationMetricCards } from '../components/evaluation/EvaluationMetricCards';
-import { EvaluationDatasetBar } from '../components/evaluation/EvaluationDatasetBar';
-import { BaselineComparisonTable } from '../components/evaluation/BaselineComparisonTable';
-import { CrossAgentAndCategorySection } from '../components/evaluation/CrossAgentAndCategorySection';
-import { AblationContributionSection } from '../components/evaluation/AblationContributionSection';
 import { EvaluationCasesTable } from '../components/evaluation/EvaluationCasesTable';
 import { MethodologyAndRunsSection } from '../components/evaluation/MethodologyAndRunsSection';
 import { EvaluationComplianceFooter } from '../components/evaluation/EvaluationComplianceFooter';
+import { getEvalSuites, runEvalSuite, getEvalRuns, getEvalRun } from '../lib/api';
 
 export const EvaluationPage: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
-  const [evalProgress, setEvalProgress] = useState(0);
-  const [evalStepMessage, setEvalStepMessage] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const [suites, setSuites] = useState<any[]>([]);
+  const [selectedSuiteId, setSelectedSuiteId] = useState<string>('');
+  const [runs, setRuns] = useState<any[]>([]);
+  const [activeRunDetail, setActiveRunDetail] = useState<any>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -26,82 +25,75 @@ export const EvaluationPage: React.FC = () => {
     }, 4000);
   };
 
-  const handleRunEvaluation = () => {
-    if (isRunning) return;
-    setIsRunning(true);
-    setEvalProgress(5);
-    setEvalStepMessage('Initializing held-out evaluation test suite (SYNTH-EVAL-v2.1)...');
-
-    const steps = [
-      { progress: 20, msg: 'Loading 250 test cases into red-team sandbox harness...' },
-      { progress: 45, msg: 'Evaluating Layer 1-3: Lexical, Regex & Semantic Intent filters...' },
-      { progress: 70, msg: 'Simulating Cross-Agent Memory Taint & RBAC Policy constraints...' },
-      { progress: 90, msg: 'Executing Output DLP & Steganographic Exfiltration Scanners...' },
-      { progress: 100, msg: 'Evaluation complete! ABR: 95.8%, FPR: 2.1%, Latency: +38ms.' },
-    ];
-
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      if (currentStep < steps.length) {
-        setEvalProgress(steps[currentStep].progress);
-        setEvalStepMessage(steps[currentStep].msg);
-        currentStep++;
-      } else {
-        clearInterval(interval);
-        setIsRunning(false);
-        showToast('Evaluation run RUN-EVAL-0842 completed successfully (Local Simulation)!');
+  const loadData = async () => {
+    try {
+      const [suitesRes, runsRes] = await Promise.all([
+        getEvalSuites(),
+        getEvalRuns({ page: 1, page_size: 10 })
+      ]);
+      setSuites(suitesRes.data);
+      if (suitesRes.data.length > 0) {
+        setSelectedSuiteId(suitesRes.data[0].suite_id);
       }
-    }, 600);
+      setRuns(runsRes.data.items || []);
+      
+      if (runsRes.data.items && runsRes.data.items.length > 0) {
+        handleSelectRun(runsRes.data.items[0].run_id);
+      }
+    } catch (err) {
+      console.error('Failed to load evaluation data', err);
+      showToast('Failed to load evaluation suites or runs.');
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleSelectRun = async (runId: string) => {
+    try {
+      const res = await getEvalRun(runId);
+      setActiveRunDetail(res.data);
+    } catch (err) {
+      console.error('Failed to fetch run details', err);
+      showToast('Failed to load run details.');
+    }
+  };
+
+  const handleRunEvaluation = async () => {
+    if (isRunning || !selectedSuiteId) return;
+    setIsRunning(true);
+    
+    try {
+      const res = await runEvalSuite(selectedSuiteId);
+      setActiveRunDetail(res.data);
+      showToast(`Evaluation run ${res.data.run_id} completed successfully!`);
+      // Refresh runs list
+      const runsRes = await getEvalRuns({ page: 1, page_size: 10 });
+      setRuns(runsRes.data.items || []);
+    } catch (err) {
+      console.error('Failed to execute evaluation suite', err);
+      showToast('Failed to execute evaluation suite.');
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const handleExportJson = () => {
-    const benchmarkData = {
-      benchmarkSuite: 'SYNTH-EVAL-v2.1',
-      evaluationId: 'RUN-EVAL-0842',
-      timestamp: new Date().toISOString(),
-      environment: 'LOCAL_SIMULATION',
-      targetModel: 'Ollama (Llama-3-8B-Instruct)',
-      policyVersion: 'v1.4.2 STRICT',
-      metrics: {
-        attackSuccessRate: 0.042,
-        attackBlockRate: 0.958,
-        falsePositiveRate: 0.021,
-        legitimateTaskYield: 0.979,
-        medianLatencyOverheadMs: 38,
-        p95LatencyOverheadMs: 112,
-        totalCases: 250,
-        adversarialCases: 48,
-        benignCases: 48,
-        attacksBlocked: 46,
-        attacksBypassed: 2,
-        benignPassed: 47,
-        benignBlocked: 1
-      },
-      layersTested: [
-        'Lexical / Heuristic Filter',
-        'Semantic Vector Intent Classifier',
-        'Policy Decision Engine (RBAC)',
-        'Contextual Taint Tracker',
-        'Output Sanitizer & DLP Guard'
-      ],
-      compliance: {
-        nistAiRmf: '1.0 Compliant',
-        ieee: 'P2801 Verified',
-        signature: 'SHA256:7f4a9b910e12d84c'
-      },
-      disclaimer: 'This benchmark JSON contains simulated test results from PromptGuard AI evaluation lab.'
-    };
-
-    const blob = new Blob([JSON.stringify(benchmarkData, null, 2)], { type: 'application/json' });
+    if (!activeRunDetail) {
+      showToast('No run selected to export.');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(activeRunDetail, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `promptguard-benchmark-RUN-EVAL-0842.json`;
+    link.download = `promptguard-benchmark-${activeRunDetail.run_id}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast('Exported benchmark report JSON (SIMULATION DATA).');
+    showToast(`Exported benchmark report JSON for ${activeRunDetail.run_id}.`);
   };
 
   const handleViewHistory = () => {
@@ -114,7 +106,6 @@ export const EvaluationPage: React.FC = () => {
 
   return (
     <PageContainer>
-      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container-highest text-on-surface border border-primary/40 shadow-2xl animate-fade-in font-body-sm text-xs">
           <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
@@ -122,13 +113,12 @@ export const EvaluationPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Page Header */}
       <PageHeader
         title="Evaluation Lab"
-        tagline="Measure attack resistance, false positives, and legitimate task completion across defense layers."
+        tagline="Measure attack resistance, false positives, and legitimate task completion against actual execution responses."
         statusBadge={
           <StatusBadge variant="tertiary" dot>
-            SYNTH-EVAL-v2.1
+            {activeRunDetail?.suite_id || 'AWAITING RUN'}
           </StatusBadge>
         }
         actions={
@@ -139,11 +129,24 @@ export const EvaluationPage: React.FC = () => {
             <Button variant="outline" icon="download" onClick={handleExportJson}>
               Export Benchmark JSON
             </Button>
+            <select
+              value={selectedSuiteId}
+              onChange={(e) => setSelectedSuiteId(e.target.value)}
+              className="px-3 py-1.5 bg-surface-container-high border border-outline-variant/30 rounded text-sm focus:outline-none focus:border-primary"
+              disabled={isRunning || suites.length === 0}
+            >
+              {suites.length === 0 && <option value="">Loading suites...</option>}
+              {suites.map((suite) => (
+                <option key={suite.suite_id} value={suite.suite_id}>
+                  {suite.name} ({suite.version})
+                </option>
+              ))}
+            </select>
             <Button
               variant="primary"
               icon={isRunning ? 'refresh' : 'play_arrow'}
               onClick={handleRunEvaluation}
-              disabled={isRunning}
+              disabled={isRunning || !selectedSuiteId}
             >
               {isRunning ? 'Evaluating...' : 'Run Evaluation'}
             </Button>
@@ -151,57 +154,33 @@ export const EvaluationPage: React.FC = () => {
         }
       />
 
-      {/* Evaluation Context & Actions Bar */}
-      <EvaluationHeader
-        isRunning={isRunning}
-        onRunEvaluation={handleRunEvaluation}
-        onExportJson={handleExportJson}
-        onViewHistory={handleViewHistory}
-      />
-
-      {/* Simulated Execution Progress Bar (When Active) */}
       {isRunning && (
         <div className="mb-6 p-4 rounded-xl bg-surface-container border border-primary/40 shadow-lg animate-fade-in">
           <div className="flex items-center justify-between text-xs mb-2">
             <span className="font-mono-code font-bold text-primary flex items-center gap-2">
               <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
-              RUNNING SUITE: SYNTH-EVAL-v2.1 ({evalProgress}%)
+              RUNNING SUITE: {selectedSuiteId} (Awaiting backend...)
             </span>
-            <span className="font-mono-code text-on-surface-variant">{evalStepMessage}</span>
-          </div>
-          <div className="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-primary h-full transition-all duration-300 rounded-full"
-              style={{ width: `${evalProgress}%` }}
-            />
           </div>
         </div>
       )}
 
-      {/* 5 Core Metric Cards */}
-      <EvaluationMetricCards />
+      {activeRunDetail && (
+        <EvaluationMetricCards metrics={activeRunDetail.metrics || []} />
+      )}
 
-      {/* Dataset & Configuration Control Bar */}
-      <EvaluationDatasetBar />
+      {activeRunDetail && (
+        <EvaluationCasesTable cases={activeRunDetail.cases || []} />
+      )}
 
-      {/* Baseline vs Protected Performance Comparison Table */}
-      <BaselineComparisonTable />
-
-      {/* 2-Column: Cross-Agent Benchmark & Category Breakdown */}
-      <CrossAgentAndCategorySection />
-
-      {/* Defense Layer Contribution (Ablation Analysis) */}
-      <AblationContributionSection />
-
-      {/* Individual Evaluation Test Cases Table */}
-      <EvaluationCasesTable />
-
-      {/* Methodology & Historical Runs */}
       <div id="previous-runs-section">
-        <MethodologyAndRunsSection />
+        <MethodologyAndRunsSection 
+          runs={runs} 
+          onSelectRun={handleSelectRun} 
+          currentRunId={activeRunDetail?.run_id} 
+        />
       </div>
 
-      {/* NIST / IEEE Compliance Footer */}
       <EvaluationComplianceFooter />
     </PageContainer>
   );
