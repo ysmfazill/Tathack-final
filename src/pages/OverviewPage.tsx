@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Button } from '../components/common/Button';
@@ -8,9 +8,29 @@ import { SecurityActivityChart } from '../components/overview/SecurityActivityCh
 import { RecentEventsTable } from '../components/overview/RecentEventsTable';
 import { DefenseLayersList } from '../components/overview/DefenseLayersList';
 import { SystemInfoPanel } from '../components/overview/SystemInfoPanel';
+import { getAuditSummary } from '../lib/api';
 
 export const OverviewPage: React.FC = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    attempts: 'Unavailable',
+    blocked: 'Unavailable',
+    pending: 'Unavailable',
+    fpr: 'Unavailable'
+  });
+  
+  useEffect(() => {
+    getAuditSummary().then((res: any) => {
+        setStats({
+           attempts: res.data.total_events?.toString() || '0',
+           blocked: res.data.denied_executions?.toString() || '0',
+           pending: '0', 
+           fpr: '0.0%' 
+        });
+    }).catch((err: any) => {
+        console.error("Failed to load backend stats", err);
+    });
+  }, []);
 
   return (
     <PageContainer>
@@ -88,7 +108,7 @@ export const OverviewPage: React.FC = () => {
                 Attack Attempts
               </span>
               <span className="font-headline-xl text-[34px] leading-tight text-white font-bold mt-1.5 tracking-tight">
-                128
+                {stats.attempts}
               </span>
             </div>
             <div className="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0 border border-outline-variant/20">
@@ -98,7 +118,7 @@ export const OverviewPage: React.FC = () => {
           <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20 text-[13px]">
             <span className="text-[#94a3b8] font-body-md truncate">Attack cases evaluated.</span>
             <span className="px-2 py-0.5 rounded bg-surface-container font-mono-code text-xs text-secondary font-medium shrink-0 ml-2">
-              DEMO DATA
+              LIVE DATA
             </span>
           </div>
         </div>
@@ -111,7 +131,7 @@ export const OverviewPage: React.FC = () => {
                 Actions Blocked
               </span>
               <span className="font-headline-xl text-[34px] leading-tight text-tertiary font-bold mt-1.5 tracking-tight">
-                94
+                {stats.blocked}
               </span>
             </div>
             <div className="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center text-tertiary shrink-0 border border-outline-variant/20">
@@ -121,7 +141,7 @@ export const OverviewPage: React.FC = () => {
           <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20 text-[13px]">
             <span className="text-[#94a3b8] font-body-md truncate">Unauthorized actions prevented.</span>
             <span className="px-2 py-0.5 rounded bg-surface-container font-mono-code text-xs text-tertiary font-medium shrink-0 ml-2">
-              73.4% block rate
+              {stats.blocked !== 'Unavailable' && stats.attempts !== 'Unavailable' && Number(stats.attempts) > 0 ? `${((Number(stats.blocked)/Number(stats.attempts))*100).toFixed(1)}% block rate` : 'N/A'}
             </span>
           </div>
         </div>
@@ -134,7 +154,7 @@ export const OverviewPage: React.FC = () => {
                 Pending Review
               </span>
               <span className="font-headline-xl text-[34px] leading-tight text-secondary font-bold mt-1.5 tracking-tight">
-                7
+                {stats.pending}
               </span>
             </div>
             <div className="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center text-secondary shrink-0 border border-outline-variant/20">
@@ -157,7 +177,7 @@ export const OverviewPage: React.FC = () => {
                 False Positive Rate
               </span>
               <span className="font-headline-xl text-[34px] leading-tight text-primary font-bold mt-1.5 tracking-tight">
-                4.2%
+                {stats.fpr}
               </span>
             </div>
             <div className="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0 border border-outline-variant/20">

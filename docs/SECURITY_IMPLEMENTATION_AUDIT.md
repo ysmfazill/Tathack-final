@@ -1,61 +1,58 @@
-# PromptGuard AI — Security Implementation Audit
-**Document ID:** `SEC-AUDIT-2026-v1.0`  
-**Project:** PromptGuard AI — Behavioral Firewall for Tool-Using AI Agents  
-**Target:** TatHack '26 — Track 2: Safe & Trustworthy AI  
-**Audit Date:** 2026-10-09  
-**Auditor:** Automated Security Architecture Review  
+# Security Implementation Audit
 
----
+## 1. Stack and Backend Consistency
+- **Expected Stack**: Node + TypeScript, Fastify, Zod, better-sqlite3.
+- **Current State**: The repository currently contains a Python/FastAPI backend (developed in earlier phases). A new Fastify backend will need to be bootstrapped in `/server` as per Stage 2 requirements.
 
-## 1. Executive Summary
+## 2. API Clients & Network
+- **Status**: Mostly hardcoded. An `api.ts` file was introduced in Phase 8 connecting to the Python backend, but the vast majority of the UI components (like AnalysisPage, EvaluationPage, PolicyPage, SettingsPage) are entirely driven by static mock data.
+- **Fix Needed**: We need to wire a new Fastify backend to these clients.
 
-PromptGuard AI is designed as a **Behavioral Firewall for Tool-Using AI Agents**. The current repository consists of a fully implemented, highly responsive React 18 + Vite 5 + TypeScript dashboard with seven screens based on Google Stitch designs. 
+## 3. UI Claims and Hardcoded Metrics
+I audited the specific claims in the UI and determined their source:
 
-Prior to this implementation pass, the frontend operated in a **deterministic local simulation mode** with mock telemetry and mock evaluation metrics. This audit identifies the exact state of security controls across the codebase and outlines the architecture required to establish a true, hardened backend security boundary.
+- **"99.4% precision" and "0.42ms SLA"**:
+  - Found in `src/components/playground/FirewallControls.tsx` (Line 111): `status: '0.42ms SLA'` (Hardcoded).
+  - Found in `src/pages/PlaygroundPage.tsx` (Line 201): `confidence={0.994}` (Hardcoded).
+  - *Fix*: Replace with "NOT MEASURED" or real metrics.
 
----
+- **"IMMUTABLE LEDGER" / "Immutable event telemetry"**:
+  - Found in `src/pages/OverviewPage.tsx` (Line 93): `"View full immutable ledger"` (Hardcoded description).
+  - Found in `src/components/audit/AuditHeader.tsx` (Line 27): `"Immutable Ledger"` (Hardcoded badge).
+  - *Fix*: Replace with "Audit log (SQLite WAL)". Tamper evidence will be implemented in Stage 5.
 
-## 2. Capability Audit Matrix
+- **"Recorded & Signed"**:
+  - Found in `src/components/live-analysis/VerticalDecisionTimeline.tsx` (Line 21): `badge: 'Recorded & Signed'` (Hardcoded).
+  - *Fix*: Remove "Signed" as real signing does not exist yet.
 
-| Security Capability | Current Status | Relevant Files / Symbols | Evidence & Current Behavior | Missing Controls / Vulnerabilities | Recommended Correction | Verification Tests Needed |
-|---|---|---|---|---|---|---|
-| **1. Execution Gateway & Tool Interception** | **UI ONLY / MOCKED** | `src/components/playground/`, `src/components/settings/RuntimeSecurityControls.tsx` | UI displays "Enforced", "Fail-Closed", and simulated execution flows, but no single backend execution gateway intercepts actual runtime tool invocations. | No physical gate wrapping the tool executor; frontend components simulate execution without invoking a verified gateway; lack of executor invocation counter. | Implement a centralized `ExecutionGateway` module with an instrumented `ToolExecutor` that enforces pre-execution authorization and tracks execution counts. | Bypass attempt tests asserting `executor.invocationCount === 0` on unauthorized actions. |
-| **2. Policy Engine & Rule Precedence** | **PARTIALLY IMPLEMENTED** | `src/pages/PolicyPage.tsx`, `src/types/index.ts` | Policy definitions (e.g. `POL-DATA-704`, `POL-EXEC-801`) and category rules exist in mock state. UI checks match rule criteria in local state. | Mandatory deny rules are not strictly separated from risk scores; no formal schema validation; missing fail-closed handler when policy dependencies fail. | Implement `PolicyEngine` with mandatory deny precedence, explicit tool allowlisting, schema checking, and fail-closed default deny. | Precedence unit tests (`DENY` overriding high confidence / low risk scores). |
-| **3. Data Classification & Label Trust** | **NOT IMPLEMENTED** | `src/types/index.ts`, `src/components/policy/DataClassificationGrid.tsx` | Data classification tiers (`PUBLIC`, `INTERNAL`, `CONFIDENTIAL`, `RESTRICTED`) are represented visually in UI cards and mock badges. | System does not verify whether classification originates from a trusted backend registry versus an untrusted model JSON proposal. | Create `TrustedDataRegistry` where classifications are bound to immutable backend object IDs rather than model-provided prompt arguments. | Model label manipulation test (model claims `RESTRICTED` record is `PUBLIC`). |
-| **4. Destination Registry & Trust Resolution** | **NOT IMPLEMENTED** | `src/components/overview/CrossAgentTopology.tsx`, `src/components/policy/DestinationControls.tsx` | UI displays approved destinations (e.g., `internal_report_db`) and blocked destinations (e.g., `external_sync`). | Destination approval is not resolved against a backend-authoritative registry; model or prompt can inject arbitrary destination names. | Implement `TrustedDestinationRegistry` with strict destination ID resolution, approved classifications, and role restrictions. | Destination manipulation test (untrusted document injecting pseudo-internal destination). |
-| **5. Cross-Agent Taint & Provenance Tracking** | **PARTIALLY IMPLEMENTED** | `src/components/overview/CrossAgentTopology.tsx`, `src/components/playground/` | Taint is visually animated in topology diagrams and timeline steppers. | No runtime object wrapping carrying immutable data provenance, source agent ID, hop history, and taint bitflags across agent handoffs. | Build `TaintTracker` and `CrossAgentGuard` maintaining cryptographically signed/immutable data envelopes between agent nodes. | Multi-agent cascade tests (HR -> Report -> Export Agent). |
-| **6. Prompt Injection & Heuristic Scanning** | **PARTIALLY IMPLEMENTED** | `src/components/playground/DualInputWorkbench.tsx`, `src/data/mockData.ts` | Regex heuristics and mock vector similarity checks identify standard jailbreak patterns (e.g., `Ignore previous instructions`). | Keyword and heuristic scanners alone are bypassable via obfuscation/token smuggling; scanner alerts are sometimes conflated with actual enforcement. | Implement multi-layer `InputScanner` with Unicode normalization, regex matching, and semantic intent heuristics, strictly decoupled from authorization. | Disguised payload test where scanner misses attack but backend policy engine denies unauthorized action. |
-| **7. Audit Logging & Event Correlation** | **PARTIALLY IMPLEMENTED** | `src/pages/AuditPage.tsx`, `src/components/audit/ExportLogsModal.tsx` | Audit logs render 1,248 simulated events with WAL diagnostics and CSV/JSONL export. CSV formula injection is mitigated. | Audit logs lack end-to-end `trace_id` correlation tying model proposals directly to gateway decisions and verifiable executor traces. | Implement structured `AuditLogger` with deterministic trace correlation, credential redaction, and SHA-256 HMAC event hashing. | Log correlation and sensitive payload redaction tests. |
-| **8. Benchmark & Evaluation Engine** | **PARTIALLY IMPLEMENTED** | `src/pages/EvaluationPage.tsx`, `src/components/evaluation/` | Evaluation Lab displays 5 metrics (ASR 4.2%, ABR 95.8%, FPR 2.1%, Yield 97.9%, Latency +38ms) with ablation charts. | Metrics are derived from static demo constants rather than dynamically computed from real executed evaluation suites. | Implement `EvaluationRunner` calculating exact mathematical metrics (ASR, ABR, FPR, Yield, Leakage Rate, p50/p95 latency) from test outcomes. | Benchmark calculation tests verifying numerator/denominator accuracy. |
+- **"Deterministic Guarantee ... Zero untrusted leakage occurred" and "0 bytes sent"**:
+  - Found in `src/components/audit/AuditEventDetailDrawer.tsx` (Line 132): `'0 bytes sent • Socket drop'`.
+  - Found in `src/components/audit/AuditEventDetailDrawer.tsx` (Line 144): `Deterministic Guarantee: Action was verified against behavioral policy prior to socket dispatch. Zero untrusted leakage occurred.`
+  - *Fix*: Reword to "Denied before the simulated executor was invoked (this scenario)." Conditionally render based on execution evidence.
 
----
+- **Stale date "2025-05-18" and static policies**:
+  - Found extensively in `src/pages/AuditPage.tsx` and `src/pages/AnalysisPage.tsx`. (e.g. `'2025-05-18 14:38:22 UTC'`).
+  - *Fix*: Read dates and policy versions from the backend/config dynamically.
 
-## 3. Detailed File and Code Path Analysis
+- **"Llama-3-8B-Instruct"**:
+  - Found hardcoded in `src/pages/SettingsPage.tsx`, `AuditPage.tsx`, `AnalysisPage.tsx`, `EvaluationHeader.tsx`, and `EvaluationDatasetBar.tsx`.
+  - *Fix*: Fetch configured model dynamically.
 
-### 3.1 Frontend Entry Points & Routing
-- `src/App.tsx`: Maps 7 primary routes (`/overview`, `/attack-playground`, `/live-analysis`, `/policies`, `/audit-logs`, `/evaluation-lab`, `/settings`).
-- `src/components/layout/AppShell.tsx`: Houses the top navigation and responsive sidebar.
+- **Overview KPIs (1,248 events, 342 blocked, 27.4%)**:
+  - While I updated `OverviewPage.tsx` in a previous phase to use dynamic `api.ts` calls for some numbers, a full cleanup is required to ensure no mock data is mixed with real data.
 
-### 3.2 Security Risk Hotspots
-1. **Unchecked Tool Proposals:** In `src/components/playground/DualInputWorkbench.tsx`, the model proposal is simulated directly in state without passing through a formal gateway.
-2. **Untrusted Model JSON Arguments:** When an agent proposes a tool call like `export_sync(data_id="HR-992", classification="PUBLIC")`, the classification must never be read from the model payload.
-3. **Execution State vs. Authorization Decision:** Previously, `PolicyDecision` (`BLOCKED` vs `ALLOWED`) was conflated with whether code actually executed. The two concepts must be explicitly decoupled into `AuthorizationDecision` (`ALLOW`, `DENY`, `REQUIRE_APPROVAL`) and `ExecutionStatus` (`EXECUTED_IN_SIMULATION`, `BLOCKED`, `NOT_EXECUTED`, `FAILED`).
+## 4. Policy Functions & Execution Gateway
+- **Current State**: The current FastAPI backend has `ExecutionGateway` and `PolicyEngine`, but the UI mock data assumes it is handling authorization without contacting a backend. 
+- **Fix Needed (Stage 2/3)**: Move all policy logic and the execution gateway to the new Fastify backend. Ensure the executor is isolated and requires re-authorization. Unknown tools must fail closed.
 
----
+## 5. Classification and Data Guard
+- **Current State**: A Python `DataGuard` exists, but the UI is mostly hardcoded to show HR -> Report -> Export mock flows.
+- **Fix Needed (Stage 4)**: Build the Node Data Guard with a strictly defined label registry (PUBLIC/INTERNAL/CONFIDENTIAL/RESTRICTED).
 
-## 4. Remediation Plan
+## 6. Audit & SQLite
+- **Current State**: Python backend uses `sqlite3`. 
+- **Fix Needed (Stage 5)**: Port to `better-sqlite3` with WAL mode in Node. Include the executor invocation evidence.
 
-1. **Phase 2–3:** Construct the core `security/` architecture:
-   - `src/security/types.ts`: Authoritative security types, decision enums, and execution statuses.
-   - `src/security/TrustedDataRegistry.ts`: Backend registry for data classifications.
-   - `src/security/TrustedDestinationRegistry.ts`: Backend registry for authorized egress targets.
-   - `src/security/TaintTracker.ts`: Provenance and taint propagation engine.
-2. **Phase 4:** Construct `CrossAgentGuard.ts` to manage the deterministic 3-agent flow (HR -> Report -> Export).
-3. **Phase 5–7:** Construct:
-   - `src/security/InputScanner.ts`: Multi-stage prompt injection & evasion detector.
-   - `src/security/PolicyEngine.ts`: Hardened policy engine with mandatory deny precedence.
-   - `src/security/ExecutionGateway.ts`: Single-point execution gate with instrumented `SimulatedToolExecutor`.
-4. **Phase 8–9:** Construct:
-   - `src/security/AuditLogger.ts`: Tamper-evident trace ledger.
-   - `src/security/EvaluationRunner.ts`: Dynamic benchmark evaluator with formal mathematical metric computations.
-5. **Phase 10–11:** Integrate the security engine into all 7 dashboard screens and run comprehensive automated test suites.
+## 7. Next Steps
+1. The repository requires significant refactoring to migrate the theoretical backend logic to the specified Node.js + Fastify architecture.
+2. The UI requires a scrubbing of hardcoded marketing claims ("Immutable", "Deterministic Guarantee", etc.) as per Stage 1.
