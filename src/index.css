@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --surface: #0b1326;
+    --surface-container-lowest: #060e20;
+    --surface-container-low: #131b2e;
+    --surface-container: #171f33;
+    --surface-container-high: #222a3d;
+    --surface-container-highest: #2d3449;
+    --on-surface: #dae2fd;
+    --on-surface-variant: #c2c6d6;
+    --outline: #8c909f;
+    --outline-variant: #424754;
+    --primary: #adc6ff;
+    --primary-container: #4d8eff;
+    --on-primary: #002e6a;
+    --secondary: #4cd7f6;
+    --secondary-container: #03b5d3;
+    --tertiary: #4edea3;
+    --tertiary-container: #00a572;
+    --error: #ffb4ab;
+    --error-container: #93000a;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #0b1326;
+    color: #dae2fd;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
+
+  /* Accessible focus indicators */
+  :focus-visible {
+    outline: 2px solid #adc6ff;
+    outline-offset: 2px;
+  }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0b1326;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #222a3d;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #424754;
+  }
+
+  /* Selection Color */
+  ::selection {
+    background: #4d8eff44;
+    color: #adc6ff;
+  }
+}
+
+/* Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Material Symbols alignment helper */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.material-symbols-outlined.fill-1 {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
