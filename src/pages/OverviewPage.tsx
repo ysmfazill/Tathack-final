@@ -8,7 +8,7 @@ import { SecurityActivityChart } from '../components/overview/SecurityActivityCh
 import { RecentEventsTable } from '../components/overview/RecentEventsTable';
 import { DefenseLayersList } from '../components/overview/DefenseLayersList';
 import { SystemInfoPanel } from '../components/overview/SystemInfoPanel';
-import { getAuditSummary } from '../lib/api';
+import { getAuditSummary, getHealth, getOverview } from '../lib/api';
 
 export const OverviewPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,22 +18,65 @@ export const OverviewPage: React.FC = () => {
     pending: 'Unavailable',
     fpr: 'Unavailable'
   });
-  
-  useEffect(() => {
-    getAuditSummary().then((res: any) => {
-        setStats({
-           attempts: res.data.total_events?.toString() || '0',
-           blocked: res.data.denied_executions?.toString() || '0',
-           pending: '0', 
-           fpr: '0.0%' 
-        });
-    }).catch((err: any) => {
-        console.error("Failed to load backend stats", err);
-    });
-  }, []);
+  const [connectionState, setConnectionState] = useState<'loading' | 'connected' | 'disconnected'>('loading');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [overviewData, setOverviewData] = useState<any>(null);
 
+  const loadData = () => {
+    setConnectionState('loading');
+    setErrorMsg('');
+    
+    getHealth().then((healthRes) => {
+      if (healthRes.status === 200) {
+        setConnectionState('connected');
+        
+        getOverview().then((res: any) => {
+           setOverviewData(res.data);
+        }).catch((err: any) => {
+           console.error("Failed to load overview data", err);
+           setErrorMsg('Failed to load overview data.');
+        });
+        
+        getAuditSummary().then((res: any) => {
+            setStats({
+               attempts: res.data.total_events?.toString() || '0',
+               blocked: res.data.denied_executions?.toString() || '0',
+               pending: '0', 
+               fpr: '0.0%' 
+            });
+        }).catch((err: any) => {
+            console.error("Failed to load backend stats", err);
+        });
+      }
+    }).catch((err) => {
+      setConnectionState('disconnected');
+      setErrorMsg('Could not connect to backend. Is it running?');
+      console.error(err);
+    });
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
   return (
     <PageContainer>
+      {connectionState === 'loading' && (
+        <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/30 text-on-surface mb-4">
+          Loading backend data...
+        </div>
+      )}
+      {connectionState === 'disconnected' && (
+        <div className="bg-error/20 p-4 rounded-xl border border-error/50 text-error mb-4 flex justify-between items-center">
+          <span>{errorMsg}</span>
+          <Button variant="primary" onClick={loadData}>Retry</Button>
+        </div>
+      )}
+      {connectionState === 'connected' && (
+        <div className="bg-[#4edea3]/20 p-4 rounded-xl border border-[#4edea3]/50 text-[#4edea3] mb-4">
+          Backend Connected (v{overviewData?.api_version || 'unknown'})
+        </div>
+      )}
+
       {/* 1. Top Notice / Environmental Banner */}
       <EnvironmentalBanner />
 
