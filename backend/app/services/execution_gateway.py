@@ -21,7 +21,10 @@ approval_store = {
     }
 }
 
-def _log_execution(request: ExecutionRequest, response: ExecutionResponse, event_type: EventType):
+import time
+
+def _log_execution(request: ExecutionRequest, response: ExecutionResponse, event_type: EventType, duration_ms: float = 0.0):
+    t0 = time.perf_counter_ns()
     event = AuditEvent(
         event_id=str(uuid.uuid4()),
         timestamp_utc=datetime.now(timezone.utc).isoformat(),
@@ -38,9 +41,19 @@ def _log_execution(request: ExecutionRequest, response: ExecutionResponse, event
         safe_metadata=redact_sensitive_data(request.arguments)
     )
     record_audit_event(event)
+    t1 = time.perf_counter_ns()
+    if response.timing_metrics is not None:
+        if "audit_persistence_ms" not in response.timing_metrics:
+            response.timing_metrics["audit_persistence_ms"] = 0.0
+        response.timing_metrics["audit_persistence_ms"] += (t1 - t0) / 1_000_000.0
 
 def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
+    t_gateway_start = time.perf_counter_ns()
+    timing_metrics = {}
+    
+    t_det_start = time.perf_counter_ns()
     detection = detect_behaviour(request)
+    timing_metrics["behaviour_detection_ms"] = (time.perf_counter_ns() - t_det_start) / 1_000_000.0
     
     metadata = redact_sensitive_data(request.arguments)
     # Append detection results to metadata if it's a valid JSON string
@@ -60,6 +73,7 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
         pass
 
     # Log EXECUTION_REQUESTED
+    t_audit_req_start = time.perf_counter_ns()
     req_event = AuditEvent(
         event_id=str(uuid.uuid4()),
         timestamp_utc=datetime.now(timezone.utc).isoformat(),
@@ -70,6 +84,7 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
         safe_metadata=metadata
     )
     record_audit_event(req_event)
+    timing_metrics["audit_persistence_ms"] = (time.perf_counter_ns() - t_audit_req_start) / 1_000_000.0
 
     if request.idempotency_key in idempotency_store:
         cached = idempotency_store[request.idempotency_key]
@@ -83,16 +98,20 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
                 handler_invoked=False,
                 reason_code="IDEMPOTENCY_PAYLOAD_MISMATCH",
                 policy_version=POLICY_VERSION,
-                evaluated_at=datetime.now(timezone.utc).isoformat()
+                evaluated_at=datetime.now(timezone.utc).isoformat(),
+                timing_metrics=timing_metrics
             )
             _log_execution(request, res, EventType.EXECUTION_FAILED)
+            res.timing_metrics["gateway_processing_ms"] = (time.perf_counter_ns() - t_gateway_start) / 1_000_000.0
             return res
         return cached["response"]
 
     req_payload_hash = hashlib.sha256(json.dumps(request.arguments, sort_keys=True).encode()).hexdigest()
     
     try:
+        t_pol_start = time.perf_counter_ns()
         policy_decision = evaluate_action(request)
+        timing_metrics["deterministic_policy_evaluation_ms"] = (time.perf_counter_ns() - t_pol_start) / 1_000_000.0
     except Exception:
         response = ExecutionResponse(
             execution_id=str(uuid.uuid4()),
@@ -102,9 +121,11 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
             handler_invoked=False,
             reason_code="POLICY_ENGINE_FAILURE",
             policy_version=POLICY_VERSION,
-            evaluated_at=datetime.now(timezone.utc).isoformat()
+            evaluated_at=datetime.now(timezone.utc).isoformat(),
+            timing_metrics=timing_metrics
         )
         _log_execution(request, response, EventType.EXECUTION_FAILED)
+        response.timing_metrics["gateway_processing_ms"] = (time.perf_counter_ns() - t_gateway_start) / 1_000_000.0
         return response
 
     execution_id = str(uuid.uuid4())
@@ -118,34 +139,43 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
         handler_invoked=False,
         reason_code=policy_decision.reason_code,
         policy_version=POLICY_VERSION,
-        evaluated_at=evaluated_at
+        evaluated_at=evaluated_at,
+        timing_metrics=timing_metrics
     )
 
     if policy_decision.decision == Decision.DENY:
         response.status = ExecutionStatus.DENIED
         idempotency_store[request.idempotency_key] = {"payload_hash": req_payload_hash, "response": response}
         _log_execution(request, response, EventType.EXECUTION_DENIED)
+        response.timing_metrics["gateway_processing_ms"] = (time.perf_counter_ns() - t_gateway_start) / 1_000_000.0
         return response
 
     if policy_decision.decision == Decision.REQUIRE_APPROVAL:
+        t_appr_start = time.perf_counter_ns()
         if not request.approval_token or request.approval_token not in approval_store:
+            timing_metrics["approval_validation_ms"] = (time.perf_counter_ns() - t_appr_start) / 1_000_000.0
             response.status = ExecutionStatus.PENDING
             response.reason_code = "MISSING_OR_INVALID_APPROVAL"
             idempotency_store[request.idempotency_key] = {"payload_hash": req_payload_hash, "response": response}
             _log_execution(request, response, EventType.APPROVAL_REQUIRED)
+            response.timing_metrics["gateway_processing_ms"] = (time.perf_counter_ns() - t_gateway_start) / 1_000_000.0
             return response
             
         approval = approval_store[request.approval_token]
         if approval["used"] or approval["tool_name"] != request.tool_name or approval["arguments_hash"] != req_payload_hash:
+            timing_metrics["approval_validation_ms"] = (time.perf_counter_ns() - t_appr_start) / 1_000_000.0
             response.status = ExecutionStatus.DENIED
             response.reason_code = "INVALID_APPROVAL_CONTEXT"
             idempotency_store[request.idempotency_key] = {"payload_hash": req_payload_hash, "response": response}
             _log_execution(request, response, EventType.EXECUTION_DENIED)
+            response.timing_metrics["gateway_processing_ms"] = (time.perf_counter_ns() - t_gateway_start) / 1_000_000.0
             return response
             
         approval["used"] = True
+        timing_metrics["approval_validation_ms"] = (time.perf_counter_ns() - t_appr_start) / 1_000_000.0
 
     if request.tool_name == "transfer_demo_records":
+        t_pol2 = time.perf_counter_ns()
         transfer_req = TransferRequest(
             source_agent=request.agent_id,
             destination_agent=request.arguments.get("destination_agent", ""),
@@ -153,11 +183,13 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
             purpose=request.arguments.get("purpose", "")
         )
         transfer_decision = evaluate_transfer(transfer_req)
+        timing_metrics["deterministic_policy_evaluation_ms"] = timing_metrics.get("deterministic_policy_evaluation_ms", 0) + ((time.perf_counter_ns() - t_pol2) / 1_000_000.0)
         if transfer_decision.decision != Decision.ALLOW:
             response.status = ExecutionStatus.DENIED
             response.reason_code = transfer_decision.reason_code
             idempotency_store[request.idempotency_key] = {"payload_hash": req_payload_hash, "response": response}
             _log_execution(request, response, EventType.EXECUTION_DENIED)
+            response.timing_metrics["gateway_processing_ms"] = (time.perf_counter_ns() - t_gateway_start) / 1_000_000.0
             return response
 
     handler = TOOL_HANDLERS.get(request.tool_name)
@@ -166,12 +198,15 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
         response.reason_code = "HANDLER_NOT_FOUND"
         idempotency_store[request.idempotency_key] = {"payload_hash": req_payload_hash, "response": response}
         _log_execution(request, response, EventType.EXECUTION_FAILED)
+        response.timing_metrics["gateway_processing_ms"] = (time.perf_counter_ns() - t_gateway_start) / 1_000_000.0
         return response
 
     _log_execution(request, response, EventType.EXECUTION_STARTED)
 
     try:
+        t_hand = time.perf_counter_ns()
         result = handler(request.arguments)
+        timing_metrics["handler_execution_ms"] = (time.perf_counter_ns() - t_hand) / 1_000_000.0
         response.status = ExecutionStatus.EXECUTED_IN_SIMULATION
         response.handler_invoked = True
         response.result = result
@@ -184,6 +219,7 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
         _log_execution(request, response, EventType.EXECUTION_FAILED)
 
     idempotency_store[request.idempotency_key] = {"payload_hash": req_payload_hash, "response": response}
+    response.timing_metrics["gateway_processing_ms"] = (time.perf_counter_ns() - t_gateway_start) / 1_000_000.0
     return response
 
 def preview_action(request: ExecutionRequest) -> PreviewResponse:
@@ -199,3 +235,4 @@ def preview_action(request: ExecutionRequest) -> PreviewResponse:
         explanation=policy_decision.explanation,
         handler_invoked=False
     )
+

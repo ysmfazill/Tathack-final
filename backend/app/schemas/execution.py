@@ -26,6 +26,7 @@ class ExecutionResponse(BaseModel):
     reason_code: Optional[str] = None
     policy_version: str
     evaluated_at: str
+    timing_metrics: Optional[Dict[str, float]] = None
 
 class PreviewResponse(BaseModel):
     tool_name: str

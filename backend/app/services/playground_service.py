@@ -69,7 +69,8 @@ def run_scenario(scenario_id: str) -> PlaygroundRunResult:
             privilege_deviation=priv_dev,
             triggered_defenses=response.matched_rules if hasattr(response, 'matched_rules') else [],
             execution_safe_metadata=json.dumps({"scenario_name": scenario.name}),
-            audit_event_id=audit_id
+            audit_event_id=audit_id,
+            timing_metrics=response.timing_metrics
         )
     except Exception as e:
         res = PlaygroundRunResult(
@@ -106,7 +107,8 @@ def _persist_run(run: PlaygroundRunResult):
                     execution_status TEXT,
                     triggered_defenses TEXT,
                     execution_safe_metadata TEXT,
-                    audit_event_id TEXT
+                    audit_event_id TEXT,
+                    timing_metrics TEXT
                 )
             ''')
             conn.execute('''
@@ -114,13 +116,14 @@ def _persist_run(run: PlaygroundRunResult):
                     simulation_id, scenario_id, timestamp, firewall_verdict, scenario_outcome,
                     policy_decision, reason_code, policy_confidence, injection_probability,
                     exfiltration_risk, privilege_deviation, handler_invoked, execution_status,
-                    triggered_defenses, execution_safe_metadata, audit_event_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    triggered_defenses, execution_safe_metadata, audit_event_id, timing_metrics
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 run.simulation_id, run.scenario_id, run.timestamp, run.firewall_verdict, run.scenario_outcome.value,
                 run.policy_decision, run.reason_code, run.policy_confidence, run.injection_probability,
                 run.exfiltration_risk, run.privilege_deviation, run.handler_invoked, run.execution_status,
-                json.dumps(run.triggered_defenses) if run.triggered_defenses else None, run.execution_safe_metadata, run.audit_event_id
+                json.dumps(run.triggered_defenses) if run.triggered_defenses else None, run.execution_safe_metadata, run.audit_event_id,
+                json.dumps(run.timing_metrics) if run.timing_metrics else None
             ))
             conn.commit()
     except Exception as e:
@@ -142,6 +145,8 @@ def get_runs(page: int = 1, page_size: int = 20) -> Tuple[List[PlaygroundRunResu
             d = dict(r)
             if d.get("triggered_defenses"):
                 d["triggered_defenses"] = json.loads(d["triggered_defenses"])
+            if d.get("timing_metrics"):
+                d["timing_metrics"] = json.loads(d["timing_metrics"])
             items.append(PlaygroundRunResult(**d))
         return items, total
     except Exception:
@@ -157,6 +162,8 @@ def get_run(run_id: str) -> PlaygroundRunResult:
         d = dict(row)
         if d.get("triggered_defenses"):
             d["triggered_defenses"] = json.loads(d["triggered_defenses"])
+        if d.get("timing_metrics"):
+            d["timing_metrics"] = json.loads(d["timing_metrics"])
         return PlaygroundRunResult(**d)
     except Exception:
         return None

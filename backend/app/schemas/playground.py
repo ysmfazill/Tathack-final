@@ -39,6 +39,7 @@ class PlaygroundRunResult(BaseModel):
     triggered_defenses: Optional[List[str]] = None
     execution_safe_metadata: Optional[str] = None
     audit_event_id: Optional[str] = None
+    timing_metrics: Optional[dict] = None
 
 class PaginatedPlaygroundRuns(BaseModel):
     items: List[PlaygroundRunResult]
