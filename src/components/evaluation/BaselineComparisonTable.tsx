@@ -155,14 +155,14 @@ export const BaselineComparisonTable: React.FC = () => {
                 <td className="py-3 px-3 text-right">
                   {row.isDeployed ? (
                     <button
-                      onClick={() => alert('Inspecting Full Defense active deployment profile...')}
+                      onClick={() => alert('Unsupported (Profile inspector not implemented)')}
                       className="px-2.5 py-1 rounded bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold hover:bg-primary transition-colors shadow-sm"
                     >
                       Inspect
                     </button>
                   ) : (
                     <button
-                      onClick={() => alert(`Inspecting configuration ${row.id}...`)}
+                      onClick={() => alert(`Unsupported (Configuration ${row.id} inspector not implemented)`)}
                       className="text-secondary hover:text-on-surface text-body-sm font-body-sm transition-colors"
                     >
                       View Details

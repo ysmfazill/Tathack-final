@@ -9,6 +9,8 @@ export const RuntimeSecurityControls: React.FC = () => {
     require_approval_for_destructive: true,
     log_level: 'INFO'
   });
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -17,10 +19,15 @@ export const RuntimeSecurityControls: React.FC = () => {
 
   const handleSave = async () => {
     setIsSaving(true);
+    setError(null);
+    setSuccess(false);
     try {
       await updateSettings('security', config);
-    } catch (e) {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (e: any) {
       console.error(e);
+      setError(e.response?.data?.detail || e.message || 'Failed to save');
     } finally {
       setIsSaving(false);
     }
@@ -41,7 +48,19 @@ export const RuntimeSecurityControls: React.FC = () => {
           </span>
         </div>
 
-        <div className="flex flex-col gap-2.5">
+        {error && (
+          <div className="bg-error-container/10 p-3 rounded-xl border border-error/30 text-xs text-error mt-space-md">
+            {error}
+          </div>
+        )}
+        
+        {success && (
+          <div className="bg-primary-container/10 p-3 rounded-xl border border-primary/30 text-xs text-primary mt-space-md">
+            Settings saved successfully!
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2.5 mt-space-md">
           <div className="flex items-center justify-between p-space-sm rounded-xl bg-surface-container border border-outline-variant/20">
             <div className="flex flex-col">
               <span className="font-body-md text-xs sm:text-sm text-on-surface font-semibold">Enforce Mandatory Deny</span>

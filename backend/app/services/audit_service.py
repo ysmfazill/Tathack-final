@@ -93,3 +93,43 @@ def get_audit_summary(db_url: str = None) -> Dict[str, int]:
         "failed_executions": failed,
         "denied_transfers": denied_transfers
     }
+
+def get_storage_metrics() -> dict:
+    import os
+    from app.core.config import settings
+    db_path = settings.database_url.replace('sqlite:///', '')
+    
+    metrics = {
+        'storage_engine': 'SQLite 3',
+        'wal_mode': False,
+        'connection_status': 'UNKNOWN',
+        'lock_state': 'UNKNOWN',
+        'database_path': db_path,
+        'file_size_kb': 0
+    }
+    
+    try:
+        from app.core.database import get_db_connection
+        with get_db_connection(settings.database_url) as conn:
+            conn.execute('SELECT 1').fetchone()
+            metrics['connection_status'] = 'HEALTHY (Read/Write)'
+            
+            journal = conn.execute('PRAGMA journal_mode').fetchone()[0]
+            if journal.lower() == 'wal':
+                metrics['wal_mode'] = True
+                metrics['storage_engine'] = 'SQLite 3 (WAL Mode)'
+            else:
+                metrics['storage_engine'] = f'SQLite 3 ({journal.upper()} Mode)'
+                
+            metrics['lock_state'] = 'UNLOCKED'
+    except Exception as e:
+        metrics['connection_status'] = f'ERROR: {str(e)}'
+        
+    try:
+        if os.path.exists(db_path):
+            metrics['file_size_kb'] = round(os.path.getsize(db_path) / 1024, 2)
+    except Exception:
+        pass
+        
+    return metrics
+

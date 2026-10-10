@@ -1,10 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
+import { getAuditStorageMetrics } from '../../lib/api';
 
 export const AuditStorageSection: React.FC = () => {
+  const [metrics, setMetrics] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const res = await getAuditStorageMetrics();
+        setMetrics(res.data);
+      } catch (e: any) {
+        console.error(e);
+        setError(e.response?.data?.detail || e.message || 'Failed to load storage metrics');
+      }
+    };
+    fetchMetrics();
+  }, []);
+
   return (
-    <Card elevation="low" className="p-space-lg shadow-md border border-outline-variant/30 flex flex-col justify-between opacity-75">
+    <Card elevation="low" className="p-space-lg shadow-md border border-outline-variant/30 flex flex-col justify-between">
       <div>
         <div className="flex items-center justify-between pb-space-md mb-space-md bg-surface-container-lowest/40 p-space-md rounded-xl border border-outline-variant/20">
           <div>
@@ -18,28 +35,24 @@ export const AuditStorageSection: React.FC = () => {
               Tamper-evident SQLite event journal in WAL mode.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="font-label-caps text-label-caps text-outline px-2.5 py-1 rounded border border-outline-variant/30 font-semibold bg-surface-container">
-              UNSUPPORTED BY BACKEND
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant mb-space-md">
-          <strong>Notice:</strong> The backend FastAPI application currently uses a hardcoded local SQLite database for audit persistence. Remote sinks and custom retention policies are not supported in this phase.
         </div>
 
         {/* Database Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm mb-space-md pointer-events-none grayscale opacity-60">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm mb-space-md">
+          {error && (
+            <div className="sm:col-span-2 p-3 rounded bg-error-container text-error text-xs font-mono-code mb-2">
+              {error}
+            </div>
+          )}
           <div className="p-space-sm rounded-xl bg-surface-container border border-outline-variant/20">
             <span className="font-label-caps text-[10px] text-outline uppercase font-mono-code font-semibold">
               Storage Engine
             </span>
             <div className="font-mono-code text-xs text-on-surface font-semibold mt-0.5">
-              SQLite 3.45 (WAL Mode)
+              {error ? 'ERROR' : (metrics?.storage_engine || 'Loading...')}
             </div>
             <span className="font-body-sm text-[10px] text-tertiary font-mono-code">
-              Synchronous: NORMAL
+              Size: {metrics?.file_size_kb || 0} KB
             </span>
           </div>
 
@@ -48,10 +61,10 @@ export const AuditStorageSection: React.FC = () => {
               Connection Status
             </span>
             <div className="font-mono-code text-xs text-tertiary font-semibold mt-0.5 flex items-center gap-1.5">
-              HEALTHY (Read/Write)
+              {metrics?.connection_status || 'Loading...'}
             </div>
             <span className="font-body-sm text-[10px] text-outline font-mono-code">
-              Lock State: UNLOCKED
+              Lock State: {metrics?.lock_state || 'Loading...'}
             </span>
           </div>
 
@@ -60,22 +73,19 @@ export const AuditStorageSection: React.FC = () => {
               Database Path
             </span>
             <div className="font-mono-code text-xs text-secondary mt-0.5 truncate font-semibold">
-              /var/data/promptguard_audit.db
+              {metrics?.database_path || 'Loading...'}
             </div>
           </div>
         </div>
       </div>
       
       {/* Actions */}
-      <div className="flex items-center justify-end gap-2 pt-space-xs flex-wrap pointer-events-none opacity-50">
-        <Button variant="secondary" size="sm" disabled>
+      <div className="flex items-center justify-end gap-2 pt-space-xs flex-wrap">
+        <Button variant="secondary" size="sm" onClick={() => alert('Unsupported (Test connection via ping implemented in API layer only)')}>
           Test Connection
         </Button>
-        <Button variant="secondary" size="sm" disabled>
+        <Button variant="secondary" size="sm" onClick={() => alert('Unsupported (Vacuum DB not available in UI)')}>
           Vacuum DB
-        </Button>
-        <Button variant="primary" size="sm" disabled>
-          Inspect SQLite Metrics
         </Button>
       </div>
     </Card>

@@ -49,7 +49,11 @@ export const getProviderStatus = () => apiClient.get('/api/providers/status');
 // Settings
 export const getSettings = (category: string) => apiClient.get(`/api/settings/${category}`);
 export const updateSettings = (category: string, config: any) => apiClient.put(`/api/settings/${category}`, config);
+export const getAuditStorageMetrics = () => apiClient.get(`/api/settings/audit-storage`);
+export const getConfigHistory = () => apiClient.get(`/api/settings/history/list`);
 
 // Analysis
 export const analyzeSecurityEvent = (action: string, target: string, prompt_context: string) => 
   apiClient.post('/api/analysis/analyze', { action, target, prompt_context });
+
+export const getDetectionComponentsStatus = () => apiClient.get('/api/settings/components/status');

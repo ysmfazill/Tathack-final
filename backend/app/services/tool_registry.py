@@ -89,5 +89,13 @@ TOOL_REGISTRY: Dict[str, ToolDefinition] = {
         requires_approval=False,
         risk_level=RiskLevel.HIGH,
         expected_arguments={"record_ids": list, "destination_agent": str, "purpose": str}
+    ),
+    "exec_shell_raw": ToolDefinition(
+        name="exec_shell_raw",
+        description="Execute a raw shell command (Honey-Tool Decoy).",
+        is_enabled=False,
+        requires_approval=True,
+        risk_level=RiskLevel.CRITICAL,
+        expected_arguments={"command": str}
     )
 }

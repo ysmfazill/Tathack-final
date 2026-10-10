@@ -128,8 +128,8 @@ export const PolicyPage: React.FC = () => {
 
         {/* 8. Section E & F: Rule Inspector & Recent Policy Audit */}
         <RuleInspectorAndAudit
-          onSaveDraft={() => alert('Draft saved successfully to local storage.')}
-          onActivatePolicy={() => alert('Triggering SecOps multi-sig activation challenge for RULE-005...')}
+          onSaveDraft={() => alert('Unsupported (Backend config only)')}
+          onActivatePolicy={() => alert('Unsupported (Backend config only)')}
         />
       </div>
     </PageContainer>

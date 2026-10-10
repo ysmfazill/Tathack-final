@@ -46,6 +46,15 @@ def _extract_indicators(request: ExecutionRequest) -> tuple[List[BehaviourSignal
                 description=f"Data transfer to high-risk destination: {dest}"
             ))
             risk += 0.6
+            
+    # Check 2.5: Honey-Tool invocation
+    if tool in ["exec_shell_raw"]:
+        signals.append(BehaviourSignal(
+            signal_type="HONEY_TOOL_INVOKED",
+            severity="CRITICAL",
+            description=f"Canary tool invoked: {tool}"
+        ))
+        risk += 1.0
 
     # Update history and Check 3: Repeated actions / unexpected sequences
     if agent_id not in agent_history:

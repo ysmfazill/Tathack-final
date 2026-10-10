@@ -11,6 +11,9 @@ import uuid
 import json
 import hashlib
 from datetime import datetime, timezone
+from app.services.input_scanner import scan_input
+from app.services.output_guard import scan_output
+from app.services.counterfactual import analyze_counterfactual
 
 idempotency_store = {}
 approval_store = {
@@ -53,6 +56,8 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
     
     t_det_start = time.perf_counter_ns()
     detection = detect_behaviour(request)
+    input_findings = scan_input(json.dumps(request.arguments))
+    counterfactual = analyze_counterfactual(request)
     timing_metrics["behaviour_detection_ms"] = (time.perf_counter_ns() - t_det_start) / 1_000_000.0
     
     metadata = redact_sensitive_data(request.arguments)
@@ -66,7 +71,9 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
             "is_anomaly": detection.is_anomaly,
             "risk_score": detection.risk_score,
             "latency_ms": detection.latency_ms,
-            "signals": [s.model_dump() for s in detection.signals]
+            "signals": [s.model_dump() for s in detection.signals],
+            "input_scanner_findings": [f.to_dict() for f in input_findings],
+            "counterfactual": counterfactual
         }
         metadata = json.dumps(md_dict)
     except Exception:
@@ -206,7 +213,18 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
     try:
         t_hand = time.perf_counter_ns()
         result = handler(request.arguments)
+        
+        # Run Output Guard
+        t_out = time.perf_counter_ns()
+        output_findings = scan_output(json.dumps(result))
+        timing_metrics["output_scan_ms"] = (time.perf_counter_ns() - t_out) / 1_000_000.0
+        
         timing_metrics["handler_execution_ms"] = (time.perf_counter_ns() - t_hand) / 1_000_000.0
+        
+        if output_findings:
+            # We don't block, just attach findings to the result object or log them
+            result["_security_output_findings"] = [f.to_dict() for f in output_findings]
+            
         response.status = ExecutionStatus.EXECUTED_IN_SIMULATION
         response.handler_invoked = True
         response.result = result

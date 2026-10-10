@@ -13,9 +13,7 @@ import { SettingsComplianceFooter } from '../components/settings/SettingsComplia
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string>('18 mins ago by SecOps Admin');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -23,18 +21,11 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSave = () => {
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      setHasUnsavedChanges(false);
-      setLastUpdated('Just now by Local User');
-      showToast('Settings saved to local browser preferences. No backend endpoints exist.');
-    }, 700);
+    showToast('Please use the "Save" or "Apply Configuration" buttons within each specific section below.');
   };
 
   const handleDiscard = () => {
     setHasUnsavedChanges(false);
-    showToast('Discarded local changes.');
   };
 
   const scrollToSection = (sectionId: string, tabName: string) => {
@@ -61,8 +52,8 @@ export const SettingsPage: React.FC = () => {
 
       {/* Page Header */}
       <SettingsHeader
-        lastUpdated={lastUpdated}
-        isSaving={isSaving}
+        lastUpdated="18 mins ago by SecOps Admin"
+        isSaving={false}
         hasUnsavedChanges={hasUnsavedChanges}
         onDiscard={handleDiscard}
         onSave={handleSave}

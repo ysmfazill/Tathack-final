@@ -58,7 +58,7 @@ export const AuditBottomPanels: React.FC = () => {
           <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
             <span className="text-outline text-[11px]">Inter-Agent Bus Channel: #agent-bus-secure-01</span>
             <button
-              onClick={() => alert('Viewing detailed inter-agent lineage trace graph...')}
+              onClick={() => alert('Unsupported (Trace graph UI not implemented)')}
               className="text-primary hover:underline font-body-sm text-[12px] font-medium"
               type="button"
             >

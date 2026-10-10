@@ -133,7 +133,7 @@ export const AuditFilterConsole: React.FC<AuditFilterConsoleProps> = ({
         </div>
         <div className="flex items-center gap-space-sm">
           <button
-            onClick={() => alert('Query view saved to SecOps preferences.')}
+            onClick={() => alert('Unsupported (Preferences not implemented)')}
             className="font-body-sm text-[12px] text-primary hover:underline"
             type="button"
           >

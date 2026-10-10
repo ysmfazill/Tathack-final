@@ -50,7 +50,15 @@ export const AnalysisPage: React.FC = () => {
 
   const handleExportJson = () => {
     if (selectedEvent) {
-      alert(`Exporting event: ${JSON.stringify(selectedEvent, null, 2)}`);
+      const blob = new Blob([JSON.stringify(selectedEvent, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `security_event_${selectedEvent.event_id || 'export'}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     }
   };
 

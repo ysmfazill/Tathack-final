@@ -1,10 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../common/Card';
 import { Link } from 'react-router-dom';
+import { getConfigHistory } from '../../lib/api';
 
 export const ConfigurationHistorySection: React.FC = () => {
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await getConfigHistory();
+        setHistory(res.data);
+      } catch (err) {
+        setError("Failed to load history");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, []);
+
   return (
-    <Card elevation="low" className="p-space-lg shadow-md border border-outline-variant/30 flex flex-col justify-between opacity-75">
+    <Card elevation="low" className="p-space-lg shadow-md border border-outline-variant/30 flex flex-col justify-between">
       <div>
         <div className="flex items-center justify-between pb-space-md mb-space-md bg-surface-container-lowest/40 p-space-md rounded-xl border border-outline-variant/20">
           <div>
@@ -18,40 +37,44 @@ export const ConfigurationHistorySection: React.FC = () => {
               Immutable audit trail of parameter mutations.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="font-label-caps text-label-caps text-outline px-2.5 py-1 rounded border border-outline-variant/30 font-semibold bg-surface-container">
-              UNSUPPORTED BY BACKEND
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant mb-space-md">
-          <strong>Notice:</strong> The backend FastAPI application currently does not track settings mutations in the audit log. History is not available.
         </div>
 
         {/* History Event Rows */}
-        <div className="flex flex-col gap-2 pointer-events-none grayscale opacity-60">
-          <div className="p-space-sm rounded-xl bg-surface-container flex flex-col gap-1 border border-outline-variant/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-mono-code text-[11px] text-secondary font-semibold">
-                  N/A
-                </span>
-                <span className="font-mono-code text-xs text-on-surface font-semibold">
-                  No records
-                </span>
+        <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+          {loading ? (
+            <div className="text-xs text-on-surface-variant">Loading...</div>
+          ) : error ? (
+            <div className="text-xs text-error">{error}</div>
+          ) : history.length === 0 ? (
+            <div className="text-xs text-on-surface-variant">No configuration changes recorded yet.</div>
+          ) : (
+            history.map((record) => (
+              <div key={record.change_id} className="p-space-sm rounded-xl bg-surface-container flex flex-col gap-1 border border-outline-variant/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono-code text-[11px] text-secondary font-semibold">
+                      {new Date(record.timestamp).toLocaleString()}
+                    </span>
+                    <span className="font-mono-code text-xs text-on-surface font-semibold">
+                      {record.category} UPDATE
+                    </span>
+                  </div>
+                  <span className="font-mono-code text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded">
+                    {record.actor}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between font-mono-code text-[11px] text-outline truncate max-w-full">
+                  <span className="truncate">
+                    Result: {record.operation_result}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center justify-between font-mono-code text-[11px] text-outline">
-              <span>
-                Mutation: None
-              </span>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       </div>
       
-      <div className="pt-space-md flex items-center justify-end pointer-events-none opacity-50">
+      <div className="pt-space-md flex items-center justify-end">
         <Link
           to="/audit-logs"
           className="font-body-md text-xs sm:text-sm text-primary hover:text-primary-fixed flex items-center gap-1 font-semibold transition-colors"

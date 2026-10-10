@@ -103,7 +103,16 @@ export const PlaygroundPage: React.FC = () => {
             <Button variant="secondary" icon="refresh" onClick={handleResetSample}>
               Reset Scenario
             </Button>
-            <Button variant="outline" icon="data_object" onClick={() => alert('Exporting evaluation test specification JSON...')}>
+            <Button variant="outline" icon="data_object" onClick={() => {
+              const spec = { scenario_id: selectedScenarioId, user_task: userTask, untrusted_payload: untrustedPayload };
+              const blob = new Blob([JSON.stringify(spec, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `spec_${selectedScenarioId}.json`;
+              link.click();
+              URL.revokeObjectURL(url);
+            }}>
               Export Spec
             </Button>
           </>

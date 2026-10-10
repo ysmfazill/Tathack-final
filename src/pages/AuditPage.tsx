@@ -130,7 +130,7 @@ export const AuditPage: React.FC = () => {
           onTimeRangeChange={setTimeRange}
           onResetFilters={handleResetFilters}
           filteredCount={filteredEvents.length}
-          totalCount={1248}
+          totalCount={auditEvents.length}
         />
 
         {/* 4. Main Split Workspace: Left = Table, Right = Detail Drawer */}
