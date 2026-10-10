@@ -72,10 +72,6 @@ def evaluate_action(request: ActionProposalRequest) -> PolicyDecisionResponse:
     from app.services.settings_service import get_settings
     security_config = get_settings("security")
     
-    if security_config.get("enforce_mandatory_deny", True) and tool.is_disabled_by_policy:
-        # Assuming is_disabled_by_policy is not a field on tool right now, we just enforce the existing disabled check
-        pass
-        
     if tool.requires_approval:
         if security_config.get("require_approval_for_destructive", True):
             return _make_response(Decision.REQUIRE_APPROVAL, "APPROVAL_REQUIRED", "This action requires human approval before execution.", tool.risk_level, ["REQUIRE_APPROVAL_FOR_SENSITIVE_ACTIONS"])
