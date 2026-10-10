@@ -32,6 +32,7 @@ export const getAuditSummary = () => apiClient.get('/api/audit-logs/summary');
 // Playground
 export const getPlaygroundScenarios = () => apiClient.get('/api/playground/scenarios');
 export const runPlaygroundScenario = (scenarioId: string) => apiClient.post('/api/playground/run', { scenario_id: scenarioId });
+export const runCustomPlaygroundScenario = (data: any) => apiClient.post('/api/playground/run-custom', data);
 export const getPlaygroundRuns = (params?: any) => apiClient.get('/api/playground/runs', { params });
 export const getPlaygroundRun = (runId: string) => apiClient.get(`/api/playground/runs/${runId}`);
 export const getPlaygroundSummary = () => apiClient.get('/api/playground/summary');

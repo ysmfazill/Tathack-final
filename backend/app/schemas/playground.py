@@ -9,6 +9,18 @@ class TestOutcome(str, Enum):
     ERROR = "ERROR"
     UNSUPPORTED = "UNSUPPORTED"
 
+from pydantic import BaseModel, Field
+
+class CustomRunRequest(BaseModel):
+    agent_id: str = Field(..., max_length=100)
+    tool_name: str = Field(..., max_length=100)
+    action: str = Field(..., max_length=100)
+    arguments: Dict[str, Any] = Field(default_factory=dict)
+    prompt: Optional[str] = Field(None, max_length=10000)
+    input_source: Optional[str] = Field(None, max_length=100)
+    data_classification: Optional[str] = Field(None, max_length=50)
+    destination: Optional[str] = Field(None, max_length=100)
+
 class ScenarioDefinition(BaseModel):
     scenario_id: str
     name: str

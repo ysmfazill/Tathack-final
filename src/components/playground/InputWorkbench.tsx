@@ -7,6 +7,12 @@ interface InputWorkbenchProps {
   onUntrustedPayloadChange: (val: string) => void;
   sourceVector: string;
   onSourceVectorChange: (val: string) => void;
+  agentId: string;
+  onAgentIdChange: (val: string) => void;
+  toolName: string;
+  onToolNameChange: (val: string) => void;
+  toolArguments: string;
+  onToolArgumentsChange: (val: string) => void;
   testCaseId: string;
   onLoadSample: () => void;
   onClear: () => void;
@@ -19,6 +25,12 @@ export const InputWorkbench: React.FC<InputWorkbenchProps> = ({
   onUntrustedPayloadChange,
   sourceVector,
   onSourceVectorChange,
+  agentId,
+  onAgentIdChange,
+  toolName,
+  onToolNameChange,
+  toolArguments,
+  onToolArgumentsChange,
   testCaseId,
   onLoadSample,
   onClear,
@@ -62,7 +74,7 @@ export const InputWorkbench: React.FC<InputWorkbenchProps> = ({
         </div>
       </div>
 
-      {/* Top Controls: Source Vector & Model Profile */}
+      {/* Top Controls: Source Vector & Agent ID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
@@ -90,17 +102,43 @@ export const InputWorkbench: React.FC<InputWorkbenchProps> = ({
 
         <div>
           <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
-            Simulated Target Agent
+            Simulated Target Agent ID
           </label>
-          <div className="bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#4cd7f6] font-mono flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#4edea3]" />
-              Executive Assistant v3.2 (Autonomous Tools)
-            </span>
-            <span className="text-[10px] text-[#8e9099] uppercase bg-[#171f33] px-1.5 py-0.5 rounded">
-              High Privilege
-            </span>
-          </div>
+          <input
+            type="text"
+            value={agentId}
+            onChange={(e) => onAgentIdChange(e.target.value)}
+            className="w-full bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#4cd7f6] font-mono focus:outline-none focus:border-[#adc6ff]"
+          />
+        </div>
+      </div>
+
+      {/* Tool Selection */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
+            Proposed Tool Name
+          </label>
+          <input
+            type="text"
+            value={toolName}
+            onChange={(e) => onToolNameChange(e.target.value)}
+            className="w-full bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#e0e2ec] font-mono focus:outline-none focus:border-[#adc6ff]"
+            placeholder="e.g. search_demo_records"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
+            Tool Arguments (JSON)
+          </label>
+          <input
+            type="text"
+            value={toolArguments}
+            onChange={(e) => onToolArgumentsChange(e.target.value)}
+            className="w-full bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#e0e2ec] font-mono focus:outline-none focus:border-[#adc6ff]"
+            placeholder='{"query": "example"}'
+          />
         </div>
       </div>
 
