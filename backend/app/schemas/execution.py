@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from enum import Enum
 from app.schemas.policy import Decision, ActionProposalRequest
@@ -15,7 +15,6 @@ class ExecutionStatus(str, Enum):
 class ExecutionRequest(ActionProposalRequest):
     idempotency_key: str
     approval_token: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class ExecutionResponse(BaseModel):
     execution_id: str

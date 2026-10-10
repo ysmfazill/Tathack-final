@@ -7,15 +7,17 @@ interface InputWorkbenchProps {
   onUntrustedPayloadChange: (val: string) => void;
   sourceVector: string;
   onSourceVectorChange: (val: string) => void;
-  agentId: string;
-  onAgentIdChange: (val: string) => void;
-  toolName: string;
-  onToolNameChange: (val: string) => void;
-  toolArguments: string;
-  onToolArgumentsChange: (val: string) => void;
   testCaseId: string;
   onLoadSample: () => void;
   onClear: () => void;
+  
+  targetAgentId: string;
+  onTargetAgentIdChange: (val: string) => void;
+  proposedToolName: string;
+  onProposedToolNameChange: (val: string) => void;
+  toolArguments: string;
+  onToolArgumentsChange: (val: string) => void;
+  jsonError: string | null;
 }
 
 export const InputWorkbench: React.FC<InputWorkbenchProps> = ({
@@ -25,15 +27,16 @@ export const InputWorkbench: React.FC<InputWorkbenchProps> = ({
   onUntrustedPayloadChange,
   sourceVector,
   onSourceVectorChange,
-  agentId,
-  onAgentIdChange,
-  toolName,
-  onToolNameChange,
-  toolArguments,
-  onToolArgumentsChange,
   testCaseId,
   onLoadSample,
   onClear,
+  targetAgentId,
+  onTargetAgentIdChange,
+  proposedToolName,
+  onProposedToolNameChange,
+  toolArguments,
+  onToolArgumentsChange,
+  jsonError,
 }) => {
   return (
     <div className="bg-[#131b2e] border border-[#222a3d] rounded-xl p-5 flex flex-col gap-4">
@@ -74,7 +77,7 @@ export const InputWorkbench: React.FC<InputWorkbenchProps> = ({
         </div>
       </div>
 
-      {/* Top Controls: Source Vector & Agent ID */}
+      {/* Top Controls: Source Vector & Model Profile */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
@@ -102,43 +105,17 @@ export const InputWorkbench: React.FC<InputWorkbenchProps> = ({
 
         <div>
           <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
-            Simulated Target Agent ID
+            Simulated Target Agent
           </label>
-          <input
-            type="text"
-            value={agentId}
-            onChange={(e) => onAgentIdChange(e.target.value)}
-            className="w-full bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#4cd7f6] font-mono focus:outline-none focus:border-[#adc6ff]"
-          />
-        </div>
-      </div>
-
-      {/* Tool Selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
-            Proposed Tool Name
-          </label>
-          <input
-            type="text"
-            value={toolName}
-            onChange={(e) => onToolNameChange(e.target.value)}
-            className="w-full bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#e0e2ec] font-mono focus:outline-none focus:border-[#adc6ff]"
-            placeholder="e.g. search_demo_records"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
-            Tool Arguments (JSON)
-          </label>
-          <input
-            type="text"
-            value={toolArguments}
-            onChange={(e) => onToolArgumentsChange(e.target.value)}
-            className="w-full bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#e0e2ec] font-mono focus:outline-none focus:border-[#adc6ff]"
-            placeholder='{"query": "example"}'
-          />
+          <div className="bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#4cd7f6] font-mono flex items-center justify-between">
+            <input 
+              type="text" 
+              value={targetAgentId} 
+              onChange={(e) => onTargetAgentIdChange(e.target.value)}
+              className="bg-transparent border-none outline-none text-[#4cd7f6] w-full"
+              placeholder="e.g. agent_123"
+            />
+          </div>
         </div>
       </div>
 
@@ -160,6 +137,37 @@ export const InputWorkbench: React.FC<InputWorkbenchProps> = ({
           placeholder="Enter the initial benign instruction given by the user..."
           className="w-full bg-[#0b1326] border border-[#222a3d] rounded-lg p-3 text-xs text-[#e0e2ec] font-mono placeholder-[#44474f] focus:outline-none focus:border-[#adc6ff] resize-y transition-colors leading-relaxed"
         />
+      </div>
+
+      {/* Tool Execution Request */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps">
+            Proposed Tool Name
+          </label>
+          <div className="bg-[#0b1326] border border-[#222a3d] rounded-lg px-3 py-2 text-xs text-[#4cd7f6] font-mono">
+            <input 
+              type="text" 
+              value={proposedToolName} 
+              onChange={(e) => onProposedToolNameChange(e.target.value)}
+              className="bg-transparent border-none outline-none text-[#4cd7f6] w-full"
+              placeholder="e.g. export_credentials"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-[#c4c6d0] uppercase tracking-wider mb-1.5 font-label-caps flex justify-between">
+            <span>Tool Arguments (JSON)</span>
+            {jsonError && <span className="text-error">{jsonError}</span>}
+          </label>
+          <textarea
+            value={toolArguments}
+            onChange={(e) => onToolArgumentsChange(e.target.value)}
+            rows={3}
+            placeholder='{"key": "value"}'
+            className={`w-full bg-[#0b1326] border ${jsonError ? 'border-error' : 'border-[#222a3d]'} rounded-lg p-3 text-xs text-[#e0e2ec] font-mono placeholder-[#44474f] focus:outline-none focus:border-[#adc6ff] resize-y transition-colors leading-relaxed`}
+          />
+        </div>
       </div>
 
       {/* Untrusted / Injected Payload */}

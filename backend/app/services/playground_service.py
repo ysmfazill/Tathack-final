@@ -8,67 +8,6 @@ from app.services.execution_gateway import execute_authorized_action
 from app.core.database import get_db_connection
 from typing import List, Tuple
 
-def run_custom_scenario(req: CustomRunRequest) -> PlaygroundRunResult:
-    sim_id = str(uuid.uuid4())
-    started_at = datetime.now(timezone.utc).isoformat()
-    
-    args = req.arguments.copy()
-    metadata = {}
-    if req.prompt: metadata["prompt"] = req.prompt
-    if req.input_source: metadata["input_source"] = req.input_source
-    if req.data_classification: metadata["data_classification"] = req.data_classification
-    if req.destination: metadata["destination_agent"] = req.destination
-    
-    try:
-        exec_req = ExecutionRequest(
-            agent_id=req.agent_id,
-            tool_name=req.tool_name,
-            action=req.action,
-            arguments=args,
-            metadata=metadata,
-            idempotency_key=str(uuid.uuid4())
-        )
-        response = execute_authorized_action(exec_req)
-        
-        verdict = "ALLOW" if response.policy_decision.value == "ALLOW" else ("REVIEW" if response.policy_decision.value == "REQUIRE_APPROVAL" else "BLOCK")
-        confidence = 0.99
-        injection_prob = 0.85 if verdict == "BLOCK" else 0.02
-        exfil_risk = 0.75 if verdict == "BLOCK" else 0.01
-        priv_dev = 0.60 if verdict == "BLOCK" else 0.03
-        audit_id = str(uuid.uuid4())
-        
-        res = PlaygroundRunResult(
-            simulation_id=sim_id,
-            scenario_id="CUSTOM_SCENARIO",
-            timestamp=started_at,
-            firewall_verdict=verdict,
-            scenario_outcome=TestOutcome.PASS,
-            policy_decision=response.policy_decision.value,
-            execution_status=response.status.value,
-            handler_invoked=response.handler_invoked,
-            reason_code=response.reason_code,
-            policy_confidence=confidence,
-            injection_probability=injection_prob,
-            exfiltration_risk=exfil_risk,
-            privilege_deviation=priv_dev,
-            triggered_defenses=response.matched_rules if hasattr(response, 'matched_rules') else [],
-            execution_safe_metadata=json.dumps({"scenario_name": "Custom User Scenario"}),
-            audit_event_id=audit_id,
-            timing_metrics=response.timing_metrics
-        )
-    except Exception as e:
-        res = PlaygroundRunResult(
-            simulation_id=sim_id,
-            scenario_id="CUSTOM_SCENARIO",
-            timestamp=started_at,
-            firewall_verdict="ERROR/INDETERMINATE",
-            scenario_outcome=TestOutcome.ERROR,
-            reason_code=str(e)
-        )
-        
-    _persist_run(res)
-    return res
-
 def run_scenario(scenario_id: str) -> PlaygroundRunResult:
     scenario = get_scenario(scenario_id)
     if not scenario:
@@ -137,6 +76,63 @@ def run_scenario(scenario_id: str) -> PlaygroundRunResult:
         res = PlaygroundRunResult(
             simulation_id=sim_id,
             scenario_id=scenario_id,
+            timestamp=started_at,
+            firewall_verdict="ERROR/INDETERMINATE",
+            scenario_outcome=TestOutcome.ERROR,
+            reason_code=str(e)
+        )
+        
+    _persist_run(res)
+    return res
+
+def run_custom_scenario(req_custom: "CustomRunRequest") -> PlaygroundRunResult:
+    sim_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        req = ExecutionRequest(
+            agent_id=req_custom.target_agent_id,
+            tool_name=req_custom.proposed_tool_name,
+            action="custom_playground_execution",
+            arguments=req_custom.tool_arguments,
+            idempotency_key=str(uuid.uuid4())
+        )
+        response = execute_authorized_action(req)
+        
+        outcome = TestOutcome.PASS
+        verdict = "ALLOW" if response.policy_decision.value == "ALLOW" else ("REVIEW" if response.policy_decision.value == "REQUIRE_APPROVAL" else "BLOCK")
+        
+        confidence = 0.99
+        injection_prob = 0.85 if verdict == "BLOCK" else 0.02
+        exfil_risk = 0.75 if verdict == "BLOCK" else 0.01
+        priv_dev = 0.60 if verdict == "BLOCK" else 0.03
+        
+        audit_id = str(uuid.uuid4())
+
+        res = PlaygroundRunResult(
+            simulation_id=sim_id,
+            scenario_id="custom",
+            timestamp=started_at,
+            firewall_verdict=verdict,
+            scenario_outcome=outcome,
+            policy_decision=response.policy_decision.value,
+            execution_status=response.status.value,
+            handler_invoked=response.handler_invoked,
+            reason_code=response.reason_code,
+            policy_confidence=confidence,
+            injection_probability=injection_prob,
+            exfiltration_risk=exfil_risk,
+            privilege_deviation=priv_dev,
+            triggered_defenses=response.matched_rules if hasattr(response, 'matched_rules') else [],
+            execution_safe_metadata=json.dumps({"scenario_name": "Custom Run"}),
+            audit_event_id=audit_id,
+            timing_metrics=response.timing_metrics
+        )
+    except Exception as e:
+        print("EXCEPTION IN RUN CUSTOM SCENARIO:", e)
+        res = PlaygroundRunResult(
+            simulation_id=sim_id,
+            scenario_id="custom",
             timestamp=started_at,
             firewall_verdict="ERROR/INDETERMINATE",
             scenario_outcome=TestOutcome.ERROR,

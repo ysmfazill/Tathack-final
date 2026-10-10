@@ -1,11 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { SecurityEvent } from '../../types';
-import { MOCK_SECURITY_EVENTS } from '../../data/mockData';
 import { EventInspectModal } from './EventInspectModal';
+import { getAuditLogs } from '../../lib/api';
 
 export const RecentEventsTable: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null);
+  const [events, setEvents] = useState<SecurityEvent[]>([]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await getAuditLogs({ page: 1, page_size: 5 });
+        if (res.data && res.data.items) {
+          const mapped = res.data.items.map((item: any) => ({
+            id: item.event_id,
+            timestamp: item.timestamp_utc,
+            eventType: item.event_type,
+            severity: item.data_classification === 'SENSITIVE' ? 'CRITICAL' : 'LOW',
+            vector: item.source_agent ? `Agent: ${item.source_agent}` : 'System',
+            decision: item.firewall_verdict === 'BLOCK' ? 'BLOCKED' : 'PERMITTED',
+            agentName: item.target_agent_id || 'System',
+            targetTool: item.tool_name,
+            reason: item.reason_code,
+            action: item.action,
+            target: item.tool_name,
+            context: item.safe_metadata
+          }));
+          setEvents(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load recent events', err);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   return (
     <>
@@ -55,12 +84,19 @@ export const RecentEventsTable: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/20 text-on-surface text-sm">
-              {MOCK_SECURITY_EVENTS.map((event, idx) => {
-                const isCrossAgent = event.vector.includes('Cross-Agent') || event.vector.includes('Inter-Agent');
-                const isBlocked = event.decision === 'BLOCKED';
-                const isEscalated = event.decision === 'ESCALATED';
+              {events.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-[#94a3b8] font-body-sm">
+                    No recent events found.
+                  </td>
+                </tr>
+              ) : (
+                events.map((event, idx) => {
+                  const isCrossAgent = event.vector.includes('Cross-Agent') || event.vector.includes('Inter-Agent');
+                  const isBlocked = event.decision === 'BLOCKED';
+                  const isEscalated = event.decision === 'ESCALATED';
 
-                return (
+                  return (
                   <tr
                     key={event.id}
                     className={`hover:bg-surface-container-high/60 transition-colors ${
@@ -149,7 +185,7 @@ export const RecentEventsTable: React.FC = () => {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

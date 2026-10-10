@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Query, HTTPException, UploadFile, File
-import json
+from fastapi import APIRouter, Query, HTTPException
 from typing import List
 from pydantic import BaseModel
 from app.schemas.playground import ScenarioDefinition, PlaygroundRunResult, PaginatedPlaygroundRuns, PlaygroundSummary, CustomRunRequest
 from app.services.attack_scenarios import get_scenarios, get_scenario
-from app.services.playground_service import run_scenario, run_custom_scenario, get_runs, get_run, get_playground_summary, _persist_run
+from app.services.playground_service import run_scenario, get_runs, get_run, get_playground_summary
 
 router = APIRouter()
 
@@ -23,6 +22,7 @@ async def execute_scenario(req: RunRequest):
 
 @router.post("/run-custom", response_model=PlaygroundRunResult)
 async def execute_custom_scenario(req: CustomRunRequest):
+    from app.services.playground_service import run_custom_scenario
     return run_custom_scenario(req)
 
 @router.get("/runs", response_model=PaginatedPlaygroundRuns)
@@ -40,23 +40,3 @@ async def get_run_detail(run_id: str):
 @router.get("/summary", response_model=PlaygroundSummary)
 async def fetch_summary():
     return get_playground_summary()
-
-@router.post("/import")
-async def import_runs(file: UploadFile = File(...)):
-    if file.content_type not in ["application/json"]:
-        raise HTTPException(status_code=400, detail="Only JSON is supported for now")
-    content = await file.read()
-    if len(content) > 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large")
-    try:
-        data = json.loads(content)
-        if not isinstance(data, list):
-            raise ValueError("Expected a JSON array")
-        imported = 0
-        for item in data:
-            run = PlaygroundRunResult(**item)
-            _persist_run(run)
-            imported += 1
-        return {"imported": imported}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid JSON data: {str(e)}")

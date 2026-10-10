@@ -28,6 +28,18 @@ export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
 
   useEffect(() => {
     const fetchScenarios = async () => {
+      const customScenario: TestScenario = {
+        id: 'custom',
+        title: 'Custom Manual Benchmark',
+        description: 'Configure and dispatch custom agent tools directly against the local test infrastructure.',
+        category: 'SANDBOX',
+        severity: 'VARIES',
+        vector: 'System API',
+        badgeVariant: 'secondary',
+        defaultTask: 'Do something',
+        defaultUntrusted: ''
+      };
+
       try {
         const response = await getPlaygroundScenarios();
         const data = response.data;
@@ -44,9 +56,10 @@ export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
           defaultUntrusted: `Payload configuration for ${d.category}`
         }));
         
-        setScenarios(mapped);
+        setScenarios([...mapped, customScenario]);
       } catch (err) {
         console.error('Failed to load scenarios', err);
+        setScenarios([customScenario]);
       }
     };
     fetchScenarios();

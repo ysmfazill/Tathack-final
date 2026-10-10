@@ -56,8 +56,7 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
     
     t_det_start = time.perf_counter_ns()
     detection = detect_behaviour(request)
-    input_to_scan = json.dumps({"args": request.arguments, "metadata": getattr(request, "metadata", {})})
-    input_findings = scan_input(input_to_scan)
+    input_findings = scan_input(json.dumps(request.arguments))
     counterfactual = analyze_counterfactual(request)
     timing_metrics["behaviour_detection_ms"] = (time.perf_counter_ns() - t_det_start) / 1_000_000.0
     
