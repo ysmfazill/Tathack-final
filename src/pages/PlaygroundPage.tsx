@@ -12,6 +12,7 @@ import { ResultsInspector } from '../components/playground/ResultsInspector';
 import { ComparativeDifferential } from '../components/playground/ComparativeDifferential';
 import { SimulationFooterBar } from '../components/playground/SimulationFooterBar';
 import { RunHistory } from '../components/playground/RunHistory';
+import { runPlaygroundScenario } from '../lib/api';
 
 export const PlaygroundPage: React.FC = () => {
   // Scenario state
@@ -66,12 +67,8 @@ export const PlaygroundPage: React.FC = () => {
   const handleRunSimulation = async () => {
     setIsSimulating(true);
     try {
-      const response = await fetch('http://127.0.0.1:8080/api/playground/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario_id: selectedScenarioId })
-      });
-      const data = await response.json();
+      const response = await runPlaygroundScenario(selectedScenarioId);
+      const data = response.data;
       console.log('Playground Execution Result:', data);
       setLastRunResult(data);
       setHistoryRefresh(prev => prev + 1);

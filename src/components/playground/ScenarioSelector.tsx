@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getPlaygroundScenarios } from '../../lib/api';
 
 export interface TestScenario {
   id: string;
@@ -28,8 +29,8 @@ export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
   useEffect(() => {
     const fetchScenarios = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8080/api/playground/scenarios');
-        const data = await response.json();
+        const response = await getPlaygroundScenarios();
+        const data = response.data;
         
         const mapped = data.map((d: any) => ({
           id: d.scenario_id,

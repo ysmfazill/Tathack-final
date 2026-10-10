@@ -111,6 +111,10 @@ def _persist_run(run: PlaygroundRunResult):
                     timing_metrics TEXT
                 )
             ''')
+            try:
+                conn.execute("ALTER TABLE playground_runs_v2 ADD COLUMN timing_metrics TEXT")
+            except Exception:
+                pass
             conn.execute('''
                 INSERT INTO playground_runs_v2 (
                     simulation_id, scenario_id, timestamp, firewall_verdict, scenario_outcome,

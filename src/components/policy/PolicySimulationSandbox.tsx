@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { evaluatePolicy } from '../../lib/api';
 
 export const PolicySimulationSandbox: React.FC = () => {
   const [sourceAgent, setSourceAgent] = useState('Report Agent');
@@ -28,10 +29,7 @@ export const PolicySimulationSandbox: React.FC = () => {
     });
 
     try {
-      const response = await fetch('http://127.0.0.1:8080/api/policies/evaluate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const response = await evaluatePolicy({
           agent_id: sourceAgent,
           tool_name: requestedTool,
           action: `User requested ${requestedTool} from ${sourceAgent} to ${destinationAgent} with class ${classification}`,
@@ -39,9 +37,8 @@ export const PolicySimulationSandbox: React.FC = () => {
              destination: destinationAgent,
              classification: classification
           }
-        })
       });
-      const data = await response.json();
+      const data = response.data;
       
       let consequence = 'Socket Terminated';
       if (data.decision === 'ALLOW') consequence = 'Socket Permitted • Dispatch Authorized';

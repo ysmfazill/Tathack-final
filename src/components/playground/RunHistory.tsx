@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { getPlaygroundRuns } from '../../lib/api';
 
 export const RunHistory: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
   const [runs, setRuns] = useState<any[]>([]);
@@ -9,9 +10,8 @@ export const RunHistory: React.FC<{ refreshTrigger: number }> = ({ refreshTrigge
     const fetchRuns = async () => {
       setLoading(true);
       try {
-        const response = await fetch('http://127.0.0.1:8080/api/playground/runs');
-        if (!response.ok) throw new Error('Failed to fetch history');
-        const data = await response.json();
+        const response = await getPlaygroundRuns({ page: 1, page_size: 10 });
+        const data = response.data;
         setRuns(data.items || []);
         setError('');
       } catch (e) {

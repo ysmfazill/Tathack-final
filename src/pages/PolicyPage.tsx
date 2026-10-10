@@ -8,6 +8,7 @@ import { DataClassificationTiers } from '../components/policy/DataClassification
 import { DestinationAndToolRbac } from '../components/policy/DestinationAndToolRbac';
 import { PolicySimulationSandbox } from '../components/policy/PolicySimulationSandbox';
 import { RuleInspectorAndAudit } from '../components/policy/RuleInspectorAndAudit';
+import { getPolicies } from '../lib/api';
 
 export const PolicyPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('transfers');
@@ -19,8 +20,8 @@ export const PolicyPage: React.FC = () => {
   React.useEffect(() => {
     const fetchPolicies = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8080/api/policies');
-        const data = await res.json();
+        const res = await getPolicies();
+        const data = res.data;
         setPolicyVersion(data.policy_version || "v1.4.2 Strict");
         
         const mappedTools = data.registered_tools.map((t: string) => {
