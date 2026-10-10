@@ -6,6 +6,7 @@ from app.services.cross_agent_guard import evaluate_transfer
 from app.services.tool_registry import TOOL_REGISTRY, TOOL_HANDLERS
 from app.services.audit_service import record_audit_event, redact_sensitive_data
 from app.schemas.audit import AuditEvent, EventType
+from app.services.behaviour_detector import detect_behaviour
 import uuid
 import json
 import hashlib
@@ -39,6 +40,25 @@ def _log_execution(request: ExecutionRequest, response: ExecutionResponse, event
     record_audit_event(event)
 
 def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
+    detection = detect_behaviour(request)
+    
+    metadata = redact_sensitive_data(request.arguments)
+    # Append detection results to metadata if it's a valid JSON string
+    try:
+        if metadata:
+            md_dict = json.loads(metadata)
+        else:
+            md_dict = {}
+        md_dict["detection"] = {
+            "is_anomaly": detection.is_anomaly,
+            "risk_score": detection.risk_score,
+            "latency_ms": detection.latency_ms,
+            "signals": [s.model_dump() for s in detection.signals]
+        }
+        metadata = json.dumps(md_dict)
+    except Exception:
+        pass
+
     # Log EXECUTION_REQUESTED
     req_event = AuditEvent(
         event_id=str(uuid.uuid4()),
@@ -47,7 +67,7 @@ def execute_authorized_action(request: ExecutionRequest) -> ExecutionResponse:
         agent_id=request.agent_id,
         tool_name=request.tool_name,
         action=request.action,
-        safe_metadata=redact_sensitive_data(request.arguments)
+        safe_metadata=metadata
     )
     record_audit_event(req_event)
 
