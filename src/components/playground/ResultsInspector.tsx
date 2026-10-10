@@ -11,10 +11,10 @@ export interface ToolCallSpec {
 
 interface ResultsInspectorProps {
   decision: string;
-  confidence: number;
-  injectionProbability: number;
-  exfiltrationRisk: number;
-  privilegeDeviation: number;
+  confidence: number | null;
+  injectionProbability: number | null;
+  exfiltrationRisk: number | null;
+  privilegeDeviation: number | null;
   summaryText: string;
   safeMetadata: string | null;
 }
@@ -62,7 +62,7 @@ export const ResultsInspector: React.FC<ResultsInspectorProps> = ({
                 FIREWALL VERDICT: {decision}
               </span>
               <span className="font-mono text-[10px] text-[#8e9099] bg-[#0b1326] px-2 py-0.5 rounded border border-[#222a3d]">
-                Confidence: {(confidence * 100).toFixed(1)}%
+                Confidence: {confidence !== null ? (confidence * 100).toFixed(1) : 'N/A'}%
               </span>
             </div>
             <p className="text-xs text-[#c4c6d0] leading-relaxed">{summaryText}</p>
@@ -90,17 +90,17 @@ export const ResultsInspector: React.FC<ResultsInspectorProps> = ({
           </div>
           <div
             className={`text-xl font-bold font-mono mb-1 ${
-              injectionProbability > 0.6 ? 'text-[#ffb4ab]' : 'text-[#4edea3]'
+              (injectionProbability ?? 0) > 0.6 ? 'text-[#ffb4ab]' : 'text-[#4edea3]'
             }`}
           >
-            {(injectionProbability * 100).toFixed(1)}%
+            {injectionProbability !== null ? (injectionProbability * 100).toFixed(1) : 'N/A'}%
           </div>
           <div className="w-full bg-[#171f33] rounded-full h-1.5 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                injectionProbability > 0.6 ? 'bg-[#ffb4ab]' : 'bg-[#4edea3]'
+                (injectionProbability ?? 0) > 0.6 ? 'bg-[#ffb4ab]' : 'bg-[#4edea3]'
               }`}
-              style={{ width: `${injectionProbability * 100}%` }}
+              style={{ width: `${(injectionProbability ?? 0) * 100}%` }}
             />
           </div>
         </div>
@@ -116,17 +116,17 @@ export const ResultsInspector: React.FC<ResultsInspectorProps> = ({
           </div>
           <div
             className={`text-xl font-bold font-mono mb-1 ${
-              exfiltrationRisk > 0.6 ? 'text-[#ffb4ab]' : 'text-[#4edea3]'
+              (exfiltrationRisk ?? 0) > 0.6 ? 'text-[#ffb4ab]' : 'text-[#4edea3]'
             }`}
           >
-            {(exfiltrationRisk * 100).toFixed(1)}%
+            {exfiltrationRisk !== null ? (exfiltrationRisk * 100).toFixed(1) : 'N/A'}%
           </div>
           <div className="w-full bg-[#171f33] rounded-full h-1.5 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                exfiltrationRisk > 0.6 ? 'bg-[#ffb4ab]' : 'bg-[#4edea3]'
+                (exfiltrationRisk ?? 0) > 0.6 ? 'bg-[#ffb4ab]' : 'bg-[#4edea3]'
               }`}
-              style={{ width: `${exfiltrationRisk * 100}%` }}
+              style={{ width: `${(exfiltrationRisk ?? 0) * 100}%` }}
             />
           </div>
         </div>
@@ -142,17 +142,17 @@ export const ResultsInspector: React.FC<ResultsInspectorProps> = ({
           </div>
           <div
             className={`text-xl font-bold font-mono mb-1 ${
-              privilegeDeviation > 0.6 ? 'text-[#ffb4ab]' : 'text-[#4edea3]'
+              (privilegeDeviation ?? 0) > 0.6 ? 'text-[#ffb4ab]' : 'text-[#4edea3]'
             }`}
           >
-            {(privilegeDeviation * 100).toFixed(1)}%
+            {privilegeDeviation !== null ? (privilegeDeviation * 100).toFixed(1) : 'N/A'}%
           </div>
           <div className="w-full bg-[#171f33] rounded-full h-1.5 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                privilegeDeviation > 0.6 ? 'bg-[#ffb4ab]' : 'bg-[#4edea3]'
+                (privilegeDeviation ?? 0) > 0.6 ? 'bg-[#ffb4ab]' : 'bg-[#4edea3]'
               }`}
-              style={{ width: `${privilegeDeviation * 100}%` }}
+              style={{ width: `${(privilegeDeviation ?? 0) * 100}%` }}
             />
           </div>
         </div>
@@ -167,12 +167,12 @@ export const ResultsInspector: React.FC<ResultsInspectorProps> = ({
             </span>
           </div>
           <div className="text-xl font-bold font-mono text-[#4edea3] mb-1">
-            {(confidence * 100).toFixed(1)}%
+            {confidence !== null ? (confidence * 100).toFixed(1) : 'N/A'}%
           </div>
           <div className="w-full bg-[#171f33] rounded-full h-1.5 overflow-hidden">
             <div
               className="h-full rounded-full bg-[#4edea3] transition-all"
-              style={{ width: `${confidence * 100}%` }}
+              style={{ width: `${(confidence ?? 0) * 100}%` }}
             />
           </div>
         </div>

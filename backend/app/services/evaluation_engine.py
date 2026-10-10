@@ -87,12 +87,12 @@ def run_evaluation_suite(suite_id: str) -> EvaluationRunDetail:
             run_id=run_id,
             scenario_id=scenario_id,
             expected_outcome="PASS", 
-            observed_outcome=pg_res.test_outcome.value,
-            test_status=pg_res.test_outcome.value,
+            observed_outcome=pg_res.scenario_outcome.value,
+            test_status=pg_res.scenario_outcome.value,
             policy_decision=pg_res.policy_decision,
             execution_status=pg_res.execution_status,
             handler_invoked=pg_res.handler_invoked,
-            handler_succeeded=pg_res.handler_succeeded,
+            handler_succeeded=pg_res.handler_invoked and pg_res.execution_status == "EXECUTED_IN_SIMULATION",
             reason_code=pg_res.reason_code,
             latency_ms=latency
         )

@@ -50,10 +50,10 @@ export const RunHistory: React.FC<{ refreshTrigger: number }> = ({ refreshTrigge
             <tbody className="divide-y divide-outline-variant/20">
               {runs.map((r, i) => (
                 <tr key={i} className="hover:bg-surface-container/30 transition-colors">
-                  <td className="py-3 px-3.5 font-mono-code text-[11px] text-on-surface">{r.run_id.substring(0,8)}</td>
+                  <td className="py-3 px-3.5 font-mono-code text-[11px] text-on-surface">{r.simulation_id ? r.simulation_id.substring(0,8) : 'N/A'}</td>
                   <td className="py-3 px-3.5 font-mono-code text-[11px] text-on-surface-variant truncate max-w-[150px]">{r.scenario_id}</td>
-                  <td className="py-3 px-3.5 text-on-surface-variant text-[11px]">{new Date(r.started_at).toLocaleString()}</td>
-                  <td className="py-3 px-3.5 font-bold">{r.test_outcome}</td>
+                  <td className="py-3 px-3.5 text-on-surface-variant text-[11px]">{r.timestamp ? new Date(r.timestamp).toLocaleString() : 'N/A'}</td>
+                  <td className="py-3 px-3.5 font-bold">{r.scenario_outcome}</td>
                   <td className="py-3 px-3.5">{r.policy_decision || 'N/A'}</td>
                   <td className="py-3 px-3.5 text-on-surface-variant text-[11px]">{r.execution_status || 'N/A'}</td>
                 </tr>

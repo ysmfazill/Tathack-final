@@ -32,7 +32,7 @@ def test_run_known_scenario():
     response = client.post("/api/playground/run", json={"scenario_id": "scenario_2_unknown_tool"})
     assert response.status_code == 200
     res = response.json()
-    assert res["test_outcome"] == "PASS"
+    assert res["scenario_outcome"] == "PASS"
     assert res["execution_status"] == "DENIED"
 
 def test_list_runs():

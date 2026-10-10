@@ -15,7 +15,7 @@ import { RunHistory } from '../components/playground/RunHistory';
 
 export const PlaygroundPage: React.FC = () => {
   // Scenario state
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('scenario-1');
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('scenario_1_authorized_search');
   const [userTask, setUserTask] = useState<string>(
     'Summarize this customer support transcript and draft a response to the user.'
   );
@@ -172,24 +172,24 @@ export const PlaygroundPage: React.FC = () => {
         <h3 className="font-headline-sm text-headline-sm text-on-surface mb-space-sm font-semibold">Execution Summary</h3>
         <p className="text-sm text-on-surface-variant font-mono-code">
           {lastRunResult 
-            ? `Scenario submitted • Policy decision: ${lastRunResult.policy_decision || 'N/A'} • Execution status: ${lastRunResult.execution_status || 'N/A'} • Handler invoked: ${lastRunResult.handler_invoked === null ? 'N/A' : (lastRunResult.handler_invoked ? 'Yes' : 'No')} • Outcome: ${lastRunResult.test_outcome}`
+            ? `Scenario submitted • Policy decision: ${lastRunResult.policy_decision || 'N/A'} • Execution status: ${lastRunResult.execution_status || 'N/A'} • Handler invoked: ${lastRunResult.handler_invoked === null ? 'N/A' : (lastRunResult.handler_invoked ? 'Yes' : 'No')} • Outcome: ${lastRunResult.scenario_outcome}`
             : 'Awaiting execution...'}
         </p>
       </div>
 
       {/* 6. Results Inspector Panel: Verdict Banner, Risk Signals, Tool Call Table */}
       <ResultsInspector
-        decision={lastRunResult ? (lastRunResult.policy_decision || 'UNKNOWN') : (isBlocked ? 'BLOCKED' : 'PERMITTED')}
-        confidence={0.994}
-        injectionProbability={0.02}
-        exfiltrationRisk={0.01}
-        privilegeDeviation={0.03}
+        decision={lastRunResult ? (lastRunResult.firewall_verdict || 'UNKNOWN') : (isBlocked ? 'BLOCKED' : 'PERMITTED')}
+        confidence={lastRunResult ? lastRunResult.policy_confidence : null}
+        injectionProbability={lastRunResult ? lastRunResult.injection_probability : null}
+        exfiltrationRisk={lastRunResult ? lastRunResult.exfiltration_risk : null}
+        privilegeDeviation={lastRunResult ? lastRunResult.privilege_deviation : null}
         summaryText={
           lastRunResult 
-            ? `Scenario Outcome: ${lastRunResult.test_outcome}. Reason Code: ${lastRunResult.reason_code || 'None'}. Handler invoked: ${lastRunResult.handler_invoked ? 'Yes' : 'No'}. Execution Status: ${lastRunResult.execution_status || 'N/A'}`
+            ? `Scenario Outcome: ${lastRunResult.scenario_outcome}. Reason Code: ${lastRunResult.reason_code || 'None'}. Handler invoked: ${lastRunResult.handler_invoked ? 'Yes' : 'No'}. Execution Status: ${lastRunResult.execution_status || 'N/A'}`
             : 'Run simulation to generate output.'
         }
-        safeMetadata={lastRunResult ? lastRunResult.safe_metadata : null}
+        safeMetadata={lastRunResult ? lastRunResult.execution_safe_metadata : null}
       />
 
       {/* 7. Behavioral Differential: Baseline Unprotected vs PromptGuard Protected */}
@@ -200,21 +200,21 @@ export const PlaygroundPage: React.FC = () => {
         }
         protectedOutput={
           lastRunResult
-            ? `[PromptGuard Security Interception Event: ${lastRunResult.run_id}]\n` +
-              `Test Outcome: ${lastRunResult.test_outcome}\n` +
+            ? `[PromptGuard Security Interception Event: ${lastRunResult.simulation_id}]\n` +
+              `Test Outcome: ${lastRunResult.scenario_outcome}\n` +
               `Execution Status: ${lastRunResult.execution_status}\n` +
               `Policy Decision: ${lastRunResult.policy_decision}`
             : 'Run simulation to inspect output.'
         }
-        isBlocked={lastRunResult ? lastRunResult.policy_decision === 'DENY' : isBlocked}
+        isBlocked={lastRunResult ? (lastRunResult.policy_decision === 'DENY' || lastRunResult.firewall_verdict === 'BLOCK') : isBlocked}
       />
 
       {/* 8. Audit Event Summary Footer Bar */}
       <SimulationFooterBar
-        simulationId={`SIM-${testCaseId}`}
+        simulationId={lastRunResult ? lastRunResult.simulation_id : `SIM-${testCaseId}`}
         scenarioTitle={lastRunResult ? lastRunResult.scenario_id : selectedScenarioId}
-        timestamp="Just now (Simulated Sandbox)"
-        verdict={isBlocked ? 'BLOCKED' : 'PERMITTED'}
+        timestamp={lastRunResult ? lastRunResult.timestamp : "Just now (Simulated Sandbox)"}
+        verdict={lastRunResult ? lastRunResult.firewall_verdict : (isBlocked ? 'BLOCKED' : 'PERMITTED')}
       />
 
       {/* 9. Persisted Run History */}

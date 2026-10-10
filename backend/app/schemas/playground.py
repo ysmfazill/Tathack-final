@@ -23,16 +23,22 @@ class ScenarioDefinition(BaseModel):
     payload: Dict[str, Any]
 
 class PlaygroundRunResult(BaseModel):
-    run_id: str
+    simulation_id: str
     scenario_id: str
-    started_at: str
-    test_outcome: TestOutcome
+    timestamp: str
+    firewall_verdict: str
+    scenario_outcome: TestOutcome
     policy_decision: Optional[str] = None
-    execution_status: Optional[str] = None
-    handler_invoked: Optional[bool] = None
-    handler_succeeded: Optional[bool] = None
     reason_code: Optional[str] = None
-    safe_metadata: Optional[str] = None
+    policy_confidence: Optional[float] = None
+    injection_probability: Optional[float] = None
+    exfiltration_risk: Optional[float] = None
+    privilege_deviation: Optional[float] = None
+    handler_invoked: Optional[bool] = None
+    execution_status: Optional[str] = None
+    triggered_defenses: Optional[List[str]] = None
+    execution_safe_metadata: Optional[str] = None
+    audit_event_id: Optional[str] = None
 
 class PaginatedPlaygroundRuns(BaseModel):
     items: List[PlaygroundRunResult]

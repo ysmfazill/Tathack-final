@@ -2,6 +2,9 @@ import json
 from datetime import datetime, timezone
 from app.core.database import get_db_connection
 from typing import Dict, Any
+from app.schemas.settings import ProviderSettings, SecuritySettings
+from pydantic import ValidationError
+from fastapi import HTTPException
 
 DEFAULT_SETTINGS = {
     "provider": {
@@ -27,6 +30,19 @@ def get_settings(category: str) -> Dict[str, Any]:
 def update_settings(category: str, config: Dict[str, Any]) -> Dict[str, Any]:
     current = get_settings(category)
     current.update(config)
+    
+    # Validate the complete settings
+    try:
+        if category == "provider":
+            ProviderSettings(**current)
+        elif category == "security":
+            SecuritySettings(**current)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown settings category: {category}")
+    except ValidationError as e:
+        # Return a structured validation error
+        raise HTTPException(status_code=422, detail=e.errors())
+    
     now = datetime.now(timezone.utc).isoformat()
     
     with get_db_connection() as conn:
